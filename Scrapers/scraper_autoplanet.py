@@ -5,9 +5,29 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
 import time
+import os
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, ElementClickInterceptedException
+import datetime
+
+inicio = time.time()
+
+# Funciones para cargar inputs
+def cargar_repuestos():
+    df = pd.read_csv('Input Repuestos/input_repuestos.csv')
+   
+    return df['repuestos'].dropna().tolist()
+
+
+def cargar_modelos_marcas():
+    path = 'Modelos y marcas'
+    modelos_marcas = []
+    for archivo in os.listdir(path):
+        if archivo.endswith('.csv'):
+            df = pd.read_csv(os.path.join(path, archivo))
+            modelos_marcas.extend(df.to_dict('records'))
+    return modelos_marcas
 
 # Configurar opciones del navegador
 options = webdriver.ChromeOptions()
@@ -20,69 +40,74 @@ driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install())
 url = 'https://www.autoplanet.cl/'
 driver.get(url)
 
-df_repuestos = pd.read_csv('repuestos_chile.csv')
+# Cargar repuestos y modelos/marcas
+repuestos = cargar_repuestos()
+modelos_marcas = cargar_modelos_marcas()
+
 datos_completos = []
-for index, row in df_repuestos.iterrows():
-    texto_busqueda = f"{row['Repuesto']} {row['Modelo']} {row['Marca']}"
 
-    input_element = driver.find_element(By.ID, "smartSearchId")
-    input_element.clear()
-    input_element.send_keys(texto_busqueda)
-    input_element.send_keys(Keys.RETURN)
+# Recorrer todas las combinaciones de repuesto + modelo + marca
+for repuesto in repuestos:
+    for modelo_marca in modelos_marcas:
+        marca = modelo_marca.get('marca', '')
+        modelo = modelo_marca.get('modelo', '')
+        generacion = str(modelo_marca.get('generacion', ''))
+        anos = modelo_marca.get('anos', '')
 
-    time.sleep(1)
-    
-
-    while True:
-        try:
-            # Esperar que cargue el contenedor de productos
-            WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((By.XPATH, '//*[@id="productSearchAutomootive"]/div/div/app-plp-grid/div[3]'))
-            )
-
-            # EXTRAER TEXTO DE LA PÁGINA ACTUAL
-            element = driver.find_element(By.XPATH, '//*[@id="productSearchAutomootive"]/div/div/app-plp-grid/div[3]')
-            texto = element.text
-            # print(texto)
-
-            productos = texto.strip().split("\n\n")
-
-            for producto in productos:
-                lineas = producto.strip().split('\n')
-                if len(lineas) >= 2:
-                    marca = lineas[0].strip()
-                    nombre = lineas[1].strip()
-                    precio = lineas[-1].strip()
-                    print(marca)
-                    datos_completos.append({
-                        'Marca': marca,
-                        'Nombre': nombre,
-                        'Precio': precio,
-                        'Busqueda': texto_busqueda
-                    })
-                # break
-                    # print(datos_completos)
-            # Intentar hacer clic en el botón siguiente
-            next_button = driver.find_element(By.XPATH, "//div[contains(@class, 'pagination-next')]/a")
-            next_button.click()
-
-            # Esperar a que cambie la página
-            WebDriverWait(driver, 10).until(EC.staleness_of(element))
-            time.sleep(3)
+        # Preparar el texto de búsqueda
+        texto_busqueda = f"{repuesto} {marca} {modelo}"
         
-            # print(datos_completos)
+        input_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.ID, "smartSearchId"))
+        )
+        input_element.clear()
+        time.sleep(1)
+        input_element.send_keys(texto_busqueda)
+        input_element.send_keys(Keys.RETURN)
+        time.sleep(1)
 
-        except NoSuchElementException:
-            break
-        except ElementClickInterceptedException:
-            print("El botón siguiente no se puede clickear.")
-            break
-        except Exception as e:
-            print(f"Error inesperado: {e}")
-            break
-    # break
+        # Inicia el while
+        while True:
+            try:
+                element = driver.find_element(By.XPATH, '//*[@id="productSearchAutomootive"]/div/div/app-plp-grid/div[3]')
+                texto = element.text
 
-# Guardar los datos de esta búsqueda en un archivo o seguir acumulando
+                productos = texto.strip().split("\n\n")
+
+                for producto in productos:
+                    lineas = producto.strip().split('\n')
+                    if len(lineas) >= 2:
+                        marca_producto = lineas[0].strip()
+                        nombre = lineas[1].strip()
+                        precio = lineas[-1].strip()
+
+                        datos_completos.append({
+                            'Marca Producto': marca_producto,
+                            'Nombre Producto': nombre,
+                            'Precio': precio,
+                            'Busqueda': texto_busqueda
+                        })
+
+                
+                break
+
+            except Exception as e:
+                print(f"Error inesperado dentro del while: {e}")
+                break
+
+
+# Guardar fin
+fin = time.time()
+duracion = fin - inicio
+duracion_legible = str(datetime.timedelta(seconds=int(duracion)))
+
+with open('Data encontrada/tiempo_ejecucion.txt', 'w') as f:
+    f.write(f"Tiempo total de ejecucinn: {duracion_legible}\n")
+    f.write(f"Duracion en segundos: {duracion:.2f} segundos\n")
+
+# Guardar los datos recolectados
 df_resultados = pd.DataFrame(datos_completos)
-# df_resultados = df_resultados.drop_duplicates()
-df_resultados.to_csv('resultados_autoplante.csv', index=False)
+df_resultados.to_csv('Data encontrada/resultados_autoplanet.csv', index=False)
+
+# Cerrar navegador
+driver.quit()

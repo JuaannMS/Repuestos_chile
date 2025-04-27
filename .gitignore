@@ -1,0 +1,6 @@
+# Ignorar carpetas
+Data encontrada/
+Input Repuestos/
+
+# Ignorar cualquier archivo .csv del proyecto
+*.csv
