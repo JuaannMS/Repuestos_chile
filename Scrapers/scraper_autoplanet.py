@@ -101,13 +101,13 @@ fin = time.time()
 duracion = fin - inicio
 duracion_legible = str(datetime.timedelta(seconds=int(duracion)))
 
-with open('Data encontrada/tiempo_ejecucion.txt', 'w') as f:
+with open('Data encontrada/tiempo_ejecucion_autoplanet.txt', 'w') as f:
     f.write(f"Tiempo total de ejecucinn: {duracion_legible}\n")
     f.write(f"Duracion en segundos: {duracion:.2f} segundos\n")
 
 # Guardar los datos recolectados
 df_resultados = pd.DataFrame(datos_completos)
-df_resultados.to_csv('Data encontrada/resultados_autoplanet.csv', index=False)
+df_resultados.to_excel('Data encontrada/resultados_autoplanet.xlsx', index=False)
 
 # Cerrar navegador
 driver.quit()

@@ -5,6 +5,32 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
 import time
+import os
+import datetime
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
+
+# Guardar inicio de ejecución
+inicio = time.time()
+
+# Funciones para cargar inputs
+def cargar_repuestos():
+    df = pd.read_csv('Input Repuestos/input_repuestos.csv')
+    return df['repuestos'].dropna().tolist()
+
+def cargar_modelos_marcas():
+    path = 'Modelos y marcas'
+    archivos_encontrados = [archivo for archivo in os.listdir(path) if archivo.endswith('.csv')]
+    archivos_a_leer = archivos_encontrados[:2]  # Solo los dos primeros archivos
+
+    modelos_marcas = []
+    for archivo in archivos_a_leer:
+        archivo_path = os.path.join(path, archivo)
+        df = pd.read_csv(archivo_path)
+        modelos_marcas.extend(df.to_dict('records'))
+    
+    return modelos_marcas
 
 # Configurar opciones del navegador
 options = webdriver.ChromeOptions()
@@ -13,59 +39,96 @@ options.add_argument('--start-maximized')
 # Inicializar el WebDriver
 driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
 
-# URL de la página a analizar
-url = 'https://mundorepuestos.com/busqueda/focos--led--l200'
-driver.get(url)
+# Ir al sitio
+driver.get('https://mundorepuestos.com/')
+time.sleep(3)
 
-time.sleep(5)  # Esperar que cargue la página
+# Esperar que el botón aparezca
+wait = WebDriverWait(driver, 10)
+boton_ok = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, 'swal2-confirm')))
+boton_ok.click()
 
-# Cargar el CSV
-df_repuestos = pd.read_csv('repuestos_chile.csv')
+time.sleep(2)
 
-# Buscar cada repuesto en la página
-for index, row in df_repuestos.iterrows():
-    # Construir el texto de búsqueda
-    texto_busqueda = f"{row['Repuesto']} {row['Modelo']} {row['Marca']}"
+# Cargar inputs
+repuestos = cargar_repuestos()
+modelos_marcas = cargar_modelos_marcas()
 
-    # Ingresar el texto en el input de búsqueda
-    input_busqueda = driver.find_element(By.ID, 'txtBuscar')
-    input_busqueda.clear()
-    input_busqueda.send_keys(texto_busqueda)
+datos_completos = []
 
-    # Clic en el botón de búsqueda
-    boton_buscar = driver.find_element(By.ID, 'btnBuscar')
-    boton_buscar.click()
+# Recorrer combinaciones de repuesto + modelo + marca
+for repuesto in repuestos:
+    for modelo_marca in modelos_marcas:
+        marca = modelo_marca.get('marca', '')
+        modelo = modelo_marca.get('modelo', '')
+        generacion = str(modelo_marca.get('generacion', ''))
+        anos = modelo_marca.get('anos', '')
 
-    time.sleep(2)
+        texto_busqueda = f"{repuesto} {marca} {modelo}"
 
-    # Extraer la información del componente
-    try:
-        contenido_productos = driver.find_element(By.XPATH, '//*[@id="contenido_productos"]').text
-        productos = contenido_productos.split('Ver fotos')
-        datos_totales = [] 
-        for producto in productos:
-            lineas = producto.strip().split('\n')
-            if len(lineas) > 6:  # Verificar que sea un producto válido
-                datos_totales.append({
-                    'Código': lineas[0].strip(),
-                    'Nombre': lineas[1].strip(),
-                    'Descripción': lineas[2].strip(),
-                    'Años': lineas[3].strip(),
-                    'Marca': lineas[4].split(':')[1].strip(),
-                    'Origen': lineas[5].split(':')[1].strip(),
-                    'Precio Oferta': lineas[6].strip(),
-                    'Precio Original': lineas[8].strip(),
-                    'Descuento': lineas[10].strip()
-                })
-    except Exception as e:
-        print(f"Error al extraer el contenido del componente para {texto_busqueda}")
+        try:
+            wait = WebDriverWait(driver, 5)
 
-# Crear un DataFrame final con todos los datos
-df_final = pd.DataFrame(datos_totales)
+            # Buscar input
+            input_busqueda = wait.until(EC.visibility_of_element_located((By.ID, 'txtBuscar')))
+            input_busqueda.clear()
+            input_busqueda.send_keys(texto_busqueda)
 
-# Guardar el DataFrame en un archivo CSV
-df_final.to_csv('productos_repuestos.csv', index=False)
-print("Datos guardados en 'productos_repuestos.csv'")
+            # Clic en botón buscar
+            boton_buscar = wait.until(EC.element_to_be_clickable((By.ID, 'btnBuscar')))
+            boton_buscar.click()
 
-# Cerrar el navegador
+            time.sleep(2)
+
+            try:
+                contenido_productos = WebDriverWait(driver, 5).until(
+                    EC.visibility_of_element_located((By.XPATH, '//*[@id="contenido_productos"]'))
+                ).text
+
+                productos = contenido_productos.split('Ver fotos')
+
+                for producto in productos:
+                    lineas = producto.strip().split('\n')
+                    if len(lineas) > 6:  # Producto válido
+                        datos_completos.append({
+                            'Código': lineas[0].strip(),
+                            'Nombre Producto': lineas[1].strip(),
+                            'Descripción': lineas[2].strip(),
+                            'Años Aplicación': lineas[3].strip(),
+                            'Marca Producto': lineas[4].split(':')[1].strip() if ':' in lineas[4] else '',
+                            'Origen': lineas[5].split(':')[1].strip() if ':' in lineas[5] else '',
+                            'Precio Oferta': lineas[6].strip(),
+                            'Precio Original': lineas[8].strip() if len(lineas) > 8 else '',
+                            'Descuento': lineas[10].strip() if len(lineas) > 10 else '',
+                            'Busqueda': texto_busqueda,
+                            'Marca Buscada': marca,
+                            'Modelo Buscado': modelo,
+                            'Generacion': generacion,
+                            'Anos': anos
+                        })
+
+            except TimeoutException:
+                print(f"No se encontraron productos para: {texto_busqueda}")
+                continue
+
+        except Exception as e:
+            print(f"Error inesperado en búsqueda {texto_busqueda}: {e}")
+            continue
+
+# Guardar datos en CSV
+df_final = pd.DataFrame(datos_completos).drop_duplicates()
+os.makedirs('Data encontrada', exist_ok=True)
+df_final.to_excel('Data encontrada/productos_mundorepuestos.xlsx', index=False)
+print("Datos guardados en 'Data encontrada/productos_mundorepuestos.csv'")
+
+# Guardar tiempo de ejecución
+fin = time.time()
+duracion = fin - inicio
+duracion_legible = str(datetime.timedelta(seconds=int(duracion)))
+
+with open('Data encontrada/tiempo_ejecucion_mundorepuestos.txt', 'w') as f:
+    f.write(f"Tiempo total de ejecucion: {duracion_legible}\n")
+    f.write(f"Duracion en segundos: {duracion:.2f} segundos\n")
+
+# Cerrar navegador
 driver.quit()
