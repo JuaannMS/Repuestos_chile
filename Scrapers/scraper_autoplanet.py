@@ -6,19 +6,18 @@ from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
 import time
 import os
+import datetime
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException, ElementClickInterceptedException
-import datetime
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
+# Guardar inicio de ejecución
 inicio = time.time()
 
 # Funciones para cargar inputs
 def cargar_repuestos():
     df = pd.read_csv('Input Repuestos/input_repuestos.csv')
-   
     return df['repuestos'].dropna().tolist()
-
 
 def cargar_modelos_marcas():
     path = 'Modelos y marcas'
@@ -29,24 +28,23 @@ def cargar_modelos_marcas():
             modelos_marcas.extend(df.to_dict('records'))
     return modelos_marcas
 
-# Configurar opciones del navegador
+# Configurar navegador
 options = webdriver.ChromeOptions()
 options.add_argument('--start-maximized')
 
-# Inicializar el WebDriver
 driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
 
-# URL de la página a analizar
+# Ir al sitio
 url = 'https://www.autoplanet.cl/'
 driver.get(url)
+time.sleep(3)
 
-# Cargar repuestos y modelos/marcas
+# Cargar inputs
 repuestos = cargar_repuestos()
 modelos_marcas = cargar_modelos_marcas()
 
 datos_completos = []
 
-# Recorrer todas las combinaciones de repuesto + modelo + marca
 for repuesto in repuestos:
     for modelo_marca in modelos_marcas:
         marca = modelo_marca.get('marca', '')
@@ -54,60 +52,80 @@ for repuesto in repuestos:
         generacion = str(modelo_marca.get('generacion', ''))
         anos = modelo_marca.get('anos', '')
 
-        # Preparar el texto de búsqueda
         texto_busqueda = f"{repuesto} {marca} {modelo}"
-        
-        input_element = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "smartSearchId"))
-        )
-        input_element.clear()
-        time.sleep(1)
-        input_element.send_keys(texto_busqueda)
-        input_element.send_keys(Keys.RETURN)
-        time.sleep(1)
 
-        # Inicia el while
-        while True:
+        try:
+            wait = WebDriverWait(driver, 5)
+
+            # Buscar input de búsqueda
+            input_element = wait.until(EC.presence_of_element_located((By.ID, "smartSearchId")))
+            input_element.clear()
+            input_element.send_keys(texto_busqueda)
+            input_element.send_keys(Keys.RETURN)
+
+            time.sleep(3)  # Dejar cargar resultados
+
             try:
-                element = driver.find_element(By.XPATH, '//*[@id="productSearchAutomootive"]/div/div/app-plp-grid/div[3]')
-                texto = element.text
+                # Esperar que aparezcan productos
+                productos = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//a[contains(@class, 'deco-none')]")))
 
-                productos = texto.strip().split("\n\n")
+                if not productos:
+                    print(f"No se encontraron productos para: {texto_busqueda}")
+                    continue
 
                 for producto in productos:
-                    lineas = producto.strip().split('\n')
-                    if len(lineas) >= 2:
-                        marca_producto = lineas[0].strip()
-                        nombre = lineas[1].strip()
-                        precio = lineas[-1].strip()
+                    try:
+                        # Link del producto
+                        link_producto = producto.get_attribute('href')
+
+                        # Nombre del producto
+                        nombre_element = producto.find_element(By.XPATH, ".//p[contains(@class, 'title')]")
+                        nombre_producto = nombre_element.text.strip()
+
+                        # Precio del producto
+                        try:
+                            precio_element = producto.find_element(By.XPATH, ".//span[contains(@class, 'new-price')]")
+                            precio_producto = precio_element.text.strip()
+                        except NoSuchElementException:
+                            precio_producto = "No disponible"
 
                         datos_completos.append({
-                            'Marca Producto': marca_producto,
-                            'Nombre Producto': nombre,
-                            'Precio': precio,
-                            'Busqueda': texto_busqueda
+                            'Nombre Producto': nombre_producto,
+                            'Precio': precio_producto,
+                            'Busqueda': texto_busqueda,
+                            'Marca Buscada': marca,
+                            'Modelo Buscado': modelo,
+                            'Generacion': generacion,
+                            'Anos': anos,
+                            'Link': link_producto
                         })
 
-                
-                break
+                    except Exception as e:
+                        print(f"Error extrayendo producto individual: {e}")
+                        continue
 
-            except Exception as e:
-                print(f"Error inesperado dentro del while: {e}")
-                break
+            except TimeoutException:
+                print(f"No se encontraron productos para: {texto_busqueda}")
+                continue
 
+        except Exception as e:
+            print(f"Error inesperado en búsqueda {texto_busqueda}: {e}")
+            continue
 
-# Guardar fin
+# Guardar datos en Excel
+df_final = pd.DataFrame(datos_completos).drop_duplicates()
+os.makedirs('Data encontrada', exist_ok=True)
+df_final.to_excel('Data encontrada/resultados_autoplanet1.xlsx', index=False)
+print("Datos guardados en 'Data encontrada/resultados_autoplanet_corregido.xlsx'")
+
+# Guardar tiempo de ejecución
 fin = time.time()
 duracion = fin - inicio
 duracion_legible = str(datetime.timedelta(seconds=int(duracion)))
 
 with open('Data encontrada/tiempo_ejecucion_autoplanet.txt', 'w') as f:
-    f.write(f"Tiempo total de ejecucinn: {duracion_legible}\n")
-    f.write(f"Duracion en segundos: {duracion:.2f} segundos\n")
-
-# Guardar los datos recolectados
-df_resultados = pd.DataFrame(datos_completos)
-df_resultados.to_excel('Data encontrada/resultados_autoplanet.xlsx', index=False)
+    f.write(f"Tiempo total de ejecución: {duracion_legible}\n")
+    f.write(f"Duración en segundos: {duracion:.2f} segundos\n")
 
 # Cerrar navegador
 driver.quit()

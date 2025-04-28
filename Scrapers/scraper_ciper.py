@@ -49,7 +49,6 @@ modelos_marcas = cargar_modelos_marcas()
 
 datos_completos = []
 
-# Recorrer combinaciones de repuesto + modelo + marca
 for repuesto in repuestos:
     for modelo_marca in modelos_marcas:
         marca = modelo_marca.get('marca', '')
@@ -77,20 +76,23 @@ for repuesto in repuestos:
             time.sleep(3)
 
             try:
-                # Esperar productos
-                element = wait.until(EC.visibility_of_element_located((
+                # Esperar la galería de productos
+                gallery = wait.until(EC.visibility_of_element_located((
                     By.XPATH, "//div[contains(@class, 'vtex-search-result-3-x-gallery')]"
                 )))
 
-                texto = element.text
+                # Capturar todos los productos <a>
+                productos_links = gallery.find_elements(By.XPATH, ".//a[contains(@class, 'vtex-product-summary-2-x-clearLink')]")
 
-                productos = texto.strip().split("AÑADIR AL CARRITO")
-                for producto in productos:
-                    lineas = producto.strip().split('\n')
-                    if len(lineas) >= 2:
-                        nombre = lineas[0].strip()
+                for producto in productos_links:
+                    href = producto.get_attribute('href')
+                    texto_producto = producto.text.strip().split('\n')
+
+                    if len(texto_producto) >= 2:
+                        nombre = texto_producto[0].strip()
                         precio = ""
-                        for linea in lineas:
+
+                        for linea in texto_producto:
                             if "$" in linea or "¢" in linea:
                                 precio = linea.strip()
                                 break
@@ -102,7 +104,8 @@ for repuesto in repuestos:
                             'Marca Buscada': marca,
                             'Modelo Buscado': modelo,
                             'Generacion': generacion,
-                            'Anos': anos
+                            'Anos': anos,
+                            'Link': href  # <-- Capturamos el link aquí
                         })
 
             except TimeoutException:

@@ -56,6 +56,12 @@ modelos_marcas = cargar_modelos_marcas()
 
 datos_completos = []
 
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+import time
+
 # Recorrer combinaciones de repuesto + modelo + marca
 for repuesto in repuestos:
     for modelo_marca in modelos_marcas:
@@ -81,30 +87,32 @@ for repuesto in repuestos:
             time.sleep(2)
 
             try:
-                contenido_productos = WebDriverWait(driver, 5).until(
-                    EC.visibility_of_element_located((By.XPATH, '//*[@id="contenido_productos"]'))
-                ).text
+                # Capturar todos los productos encontrados
+                productos_links = WebDriverWait(driver, 5).until(
+                    EC.presence_of_all_elements_located((By.CLASS_NAME, 'linkVerPrd'))
+                )
 
-                productos = contenido_productos.split('Ver fotos')
+                for link_producto in productos_links:
+                    href = link_producto.get_attribute('href')
+                    datos_elemento = link_producto.text.strip().split('\n')
 
-                for producto in productos:
-                    lineas = producto.strip().split('\n')
-                    if len(lineas) > 6:  # Producto válido
+                    if len(datos_elemento) > 6:  # Producto válido
                         datos_completos.append({
-                            'Código': lineas[0].strip(),
-                            'Nombre Producto': lineas[1].strip(),
-                            'Descripción': lineas[2].strip(),
-                            'Años Aplicación': lineas[3].strip(),
-                            'Marca Producto': lineas[4].split(':')[1].strip() if ':' in lineas[4] else '',
-                            'Origen': lineas[5].split(':')[1].strip() if ':' in lineas[5] else '',
-                            'Precio Oferta': lineas[6].strip(),
-                            'Precio Original': lineas[8].strip() if len(lineas) > 8 else '',
-                            'Descuento': lineas[10].strip() if len(lineas) > 10 else '',
+                            'Código': datos_elemento[0].strip(),
+                            'Nombre Producto': datos_elemento[1].strip(),
+                            'Descripción': datos_elemento[2].strip(),
+                            'Años Aplicación': datos_elemento[3].strip(),
+                            'Marca Producto': datos_elemento[4].split(':')[1].strip() if ':' in datos_elemento[4] else '',
+                            'Origen': datos_elemento[5].split(':')[1].strip() if ':' in datos_elemento[5] else '',
+                            'Precio Oferta': datos_elemento[6].strip(),
+                            'Precio Original': datos_elemento[8].strip() if len(datos_elemento) > 8 else '',
+                            'Descuento': datos_elemento[10].strip() if len(datos_elemento) > 10 else '',
                             'Busqueda': texto_busqueda,
                             'Marca Buscada': marca,
                             'Modelo Buscado': modelo,
                             'Generacion': generacion,
-                            'Anos': anos
+                            'Anos': anos,
+                            'Link': href  # <-- Capturamos el link aquí
                         })
 
             except TimeoutException:
@@ -114,6 +122,7 @@ for repuesto in repuestos:
         except Exception as e:
             print(f"Error inesperado en búsqueda {texto_busqueda}: {e}")
             continue
+
 
 # Guardar datos en CSV
 df_final = pd.DataFrame(datos_completos).drop_duplicates()

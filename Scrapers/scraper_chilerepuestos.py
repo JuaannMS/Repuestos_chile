@@ -57,8 +57,6 @@ modelos_marcas = cargar_modelos_marcas()
 
 datos_completos = []
 
-
-
 for repuesto in repuestos:
     for modelo_marca in modelos_marcas:
         marca = modelo_marca.get('marca', '')
@@ -69,16 +67,15 @@ for repuesto in repuestos:
         texto_busqueda = f"{repuesto} {marca} {modelo}"
 
         try:
-
             # Ingresar texto en input de búsqueda
-            input_busqueda = WebDriverWait(driver, 10).until(
+            input_busqueda = WebDriverWait(driver, 5).until(
                 EC.presence_of_element_located((By.ID, 'Buscador'))
             )
             input_busqueda.clear()
             input_busqueda.send_keys(texto_busqueda)
 
             # Clic en el botón de búsqueda
-            boton_buscar = WebDriverWait(driver, 10).until(
+            boton_buscar = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-default btn-lg']"))
             )
             boton_buscar.click()
@@ -88,26 +85,34 @@ for repuesto in repuestos:
 
             try:
                 productos_element = WebDriverWait(driver, 5).until(
-                    EC.presence_of_element_located((By.XPATH, '//*[@id="shop-grid"]/div'))
+                    EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, 'shop-single-item')]"))
                 )
 
-                productos = productos_element.text
+                for producto in productos_element:
+                    # 🔥 Buscar directamente sin try-except individuales
+                    link_element = producto.find_element(By.XPATH, ".//div[@class='product-img']/a")
+                    href = link_element.get_attribute('href')
 
-                for producto in productos.split('COMPRAR'):
-                    lineas = producto.strip().split('\n')
+                    marca_producto = producto.find_element(By.XPATH, ".//div[@class='product-card__badges']/div[contains(@class, 'tag-badge--sale')]").text.strip()
+                    nombre_producto = producto.find_element(By.XPATH, ".//div[@class='product-content']/h2/a").text.strip()
+                    descripcion_producto = producto.find_element(By.XPATH, ".//div[@class='product-content']/div").text.strip()
+                    precio_producto = producto.find_element(By.XPATH, ".//div[@class='pro-price']/span[contains(@class, 'new-price')]").text.strip()
+                    codigo_producto = producto.find_element(By.XPATH, ".//a[contains(@class, 'add-to-wishlist')]").text.strip()
 
-                    if len(lineas) >= 6:
+                    # Solo guardar si hay descripción válida
+                    if descripcion_producto and descripcion_producto.strip() not in ["", "Sin descripción"]:
                         datos_completos.append({
-                            'Marca Producto': lineas[0].strip(),
-                            'Nombre Producto': lineas[1].strip(),
-                            'Descripción': lineas[2].strip(),
-                            'Precio': lineas[-3].strip(),
-                            'Código': lineas[-1].strip(),
+                            'Marca Producto': marca_producto,
+                            'Nombre Producto': nombre_producto,
+                            'Descripción': descripcion_producto,
+                            'Precio': precio_producto,
+                            'Código': codigo_producto,
                             'Busqueda': texto_busqueda,
                             'Marca Buscada': marca,
                             'Modelo Buscado': modelo,
                             'Generacion': generacion,
-                            'Anos': anos
+                            'Anos': anos,
+                            'Link': href
                         })
 
             except NoSuchElementException:
@@ -119,9 +124,9 @@ for repuesto in repuestos:
             continue
 
 # Guardar datos en CSV
-df_final = pd.DataFrame(datos_completos)
+df_final = pd.DataFrame(datos_completos).drop_duplicates()
 os.makedirs('Data encontrada', exist_ok=True)
-df_final.to_excel('Data encontrada/productos_chilerepuestos.xlsx', index=False)
+df_final.to_excel('Data encontrada/productos_chilerepuestos1.xlsx', index=False)
 print("Datos guardados en 'Data encontrada/productos_chilerepuestos.csv'")
 
 # Guardar tiempo de ejecución
