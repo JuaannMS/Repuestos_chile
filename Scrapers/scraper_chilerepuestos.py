@@ -126,7 +126,7 @@ for repuesto in repuestos:
 # Guardar datos en CSV
 df_final = pd.DataFrame(datos_completos).drop_duplicates()
 os.makedirs('Data encontrada', exist_ok=True)
-df_final.to_excel('Data encontrada/productos_chilerepuestos1.xlsx', index=False)
+df_final.to_excel('Data encontrada/productos_chilerepuestos.xlsx', index=False)
 print("Datos guardados en 'Data encontrada/productos_chilerepuestos.csv'")
 
 # Guardar tiempo de ejecución
