@@ -10,7 +10,7 @@ import datetime
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 # Guardar inicio de ejecución
@@ -98,8 +98,6 @@ for repuesto in repuestos:
                             'Busqueda': texto_busqueda,
                             'Marca Buscada': marca,
                             'Modelo Buscado': modelo,
-                            'Generacion': generacion,
-                            'Anos': anos,
                             'Link': link_producto
                         })
 
@@ -125,7 +123,7 @@ print("Datos guardados en 'Data encontrada/resultados_autoplanet_corregido.xlsx'
 # Guardar tiempo de ejecución
 fin = time.time()
 duracion = fin - inicio
-duracion_legible = str(datetime.timedelta(seconds=int(duracion)))
+duracion_legible = str(timedelta(seconds=int(duracion)))
 
 with open('Data encontrada/tiempo_ejecucion_autoplanet.txt', 'w') as f:
     f.write(f"Tiempo total de ejecución: {duracion_legible}\n")

@@ -108,8 +108,6 @@ for repuesto in repuestos:
                         'Marca Fabricante': fabricante,
                         'Marca Buscada': marca,
                         'Modelo Buscado': modelo,
-                        'Generacion': generacion,
-                        'Anos': anos,
                         'Link': link
                     })
 

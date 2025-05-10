@@ -10,7 +10,7 @@ import datetime
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Guardar inicio de ejecución
 inicio = time.time()
@@ -105,8 +105,6 @@ for repuesto in repuestos:
                             'Busqueda': texto_busqueda,
                             'Marca Buscada': marca,
                             'Modelo Buscado': modelo,
-                            'Generacion': generacion,
-                            'Anos': anos,
                             'Link': href  # <-- Capturamos el link aquí
                         })
 
@@ -121,14 +119,14 @@ for repuesto in repuestos:
 # Guardar datos en CSV
 df_resultados = pd.DataFrame(datos_completos).drop_duplicates()
 os.makedirs('Data encontrada', exist_ok=True)
-df_resultados['fecha_carga'] = df_resultados
+df_resultados['fecha_carga'] = fecha_hora_actual
 df_resultados.to_excel('Data encontrada/resultados_ciper.xlsx', index=False)
 print("Datos guardados en 'Data encontrada/resultados_ciper.csv'")
 
 # Guardar tiempo de ejecución
 fin = time.time()
 duracion = fin - inicio
-duracion_legible = str(datetime.timedelta(seconds=int(duracion)))
+duracion_legible = str(timedelta(seconds=int(duracion)))
 
 with open('Data encontrada/tiempo_ejecucion_ciper.txt', 'w') as f:
     f.write(f"Tiempo total de ejecucion: {duracion_legible}\n")

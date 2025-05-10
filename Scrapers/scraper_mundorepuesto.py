@@ -6,12 +6,12 @@ from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
 import time
 import os
-import datetime
+from datetime import datetime, timedelta
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
-from datetime import datetime
 
+# Fecha y hora de carga
 fecha_hora_actual = datetime.now()
 
 # Guardar inicio de ejecución
@@ -24,94 +24,96 @@ def cargar_repuestos():
 
 def cargar_modelos_marcas():
     path = 'Modelos y marcas'
-    archivos_encontrados = [archivo for archivo in os.listdir(path) if archivo.endswith('.csv')]
-    archivos_a_leer = archivos_encontrados[:2]  # Solo los dos primeros archivos
+    archivos = [f for f in os.listdir(path) if f.endswith('.csv')]
+    archivos = archivos[:2]  # solo los dos primeros
+    records = []
+    for archivo in archivos:
+        df = pd.read_csv(os.path.join(path, archivo))
+        records.extend(df.to_dict('records'))
+    return records
 
-    modelos_marcas = []
-    for archivo in archivos_a_leer:
-        archivo_path = os.path.join(path, archivo)
-        df = pd.read_csv(archivo_path)
-        modelos_marcas.extend(df.to_dict('records'))
-    
-    return modelos_marcas
-
-# Configurar opciones del navegador
+# Configurar WebDriver
 options = webdriver.ChromeOptions()
 options.add_argument('--start-maximized')
+driver = webdriver.Chrome(
+    service=ChromeService(ChromeDriverManager().install()),
+    options=options
+)
 
-# Inicializar el WebDriver
-driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
-
-# Ir al sitio
+# Navegar a la página y cerrar alerta
 driver.get('https://mundorepuestos.com/')
 time.sleep(3)
-
-# Esperar que el botón aparezca
 wait = WebDriverWait(driver, 10)
 boton_ok = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, 'swal2-confirm')))
 boton_ok.click()
-
 time.sleep(2)
 
-# Cargar inputs
+# Cargar datos de entrada
 repuestos = cargar_repuestos()
 modelos_marcas = cargar_modelos_marcas()
-
 datos_completos = []
 
-
-
-# Recorrer combinaciones de repuesto + modelo + marca
+# Bucle principal
 for repuesto in repuestos:
-    for modelo_marca in modelos_marcas:
-        marca = modelo_marca.get('marca', '')
-        modelo = modelo_marca.get('modelo', '')
-        generacion = str(modelo_marca.get('generacion', ''))
-        anos = modelo_marca.get('anos', '')
+    for mm in modelos_marcas:
+        marca = mm.get('marca', '')
+        modelo = mm.get('modelo', '')
+        generacion = str(mm.get('generacion', ''))
+        anos = mm.get('anos', '')
 
         texto_busqueda = f"{repuesto} {marca} {modelo}"
-
         try:
-            wait = WebDriverWait(driver, 3)
+            wait_short = WebDriverWait(driver, 3)
+            # Buscar y escribir en el input
+            inp = wait_short.until(EC.visibility_of_element_located((By.ID, 'txtBuscar')))
+            inp.clear()
+            inp.send_keys(texto_busqueda)
 
-            # Buscar input
-            input_busqueda = wait.until(EC.visibility_of_element_located((By.ID, 'txtBuscar')))
-            input_busqueda.clear()
-            input_busqueda.send_keys(texto_busqueda)
-
-            # Clic en botón buscar
-            boton_buscar = wait.until(EC.element_to_be_clickable((By.ID, 'btnBuscar')))
-            boton_buscar.click()
-
+            # Clic en buscar
+            btn = wait_short.until(EC.element_to_be_clickable((By.ID, 'btnBuscar')))
+            btn.click()
             time.sleep(2)
 
             try:
-                # Capturar todos los productos encontrados
-                productos_links = WebDriverWait(driver, 3).until(
+                productos_links = wait_short.until(
                     EC.presence_of_all_elements_located((By.CLASS_NAME, 'linkVerPrd'))
                 )
+                for link in productos_links:
+                    href = link.get_attribute('href')
+                    # Contenedor de datos dentro del link
+                    container = link.find_element(By.XPATH, ".//div[@id='datos-producto']")
+                    # Código
+                    codigo = container.find_element(By.CSS_SELECTOR, "p.codigo_producto").text
+                    # Nombre
+                    nombre = container.find_element(By.CSS_SELECTOR, "span.titulo-producto").text
+                    # Descripción (segundo span hijo)
+                    spans = container.find_elements(By.XPATH, "./span")
+                    descripcion = spans[1].text if len(spans) > 1 else ''
+                    # Años
+                    anos_aplic = container.find_element(By.CSS_SELECTOR, "span.years").text
+                    # Marca del producto
+                    marca_prod = container.find_element(By.CSS_SELECTOR, "span.nameMarca").text
+                    # Origen
+                    origen = container.find_element(By.CSS_SELECTOR, "span.productoOrigen").text
+                    # Precio oferta desde atributo
+                    precio_oferta = link.get_attribute("data-priceoffer")
+                    # Precio original
+                    precio_original = container.find_element(By.CSS_SELECTOR, "span.precio_original").text
 
-                for link_producto in productos_links:
-                    href = link_producto.get_attribute('href')
-                    datos_elemento = link_producto.text.strip().split('\n')
-
-                    if len(datos_elemento) > 6:  # Producto válido
-                        datos_completos.append({
-                            'Código': datos_elemento[0].strip(),
-                            'Nombre Producto': datos_elemento[1].strip(),
-                            'Descripción': datos_elemento[2].strip(),
-                            'Años Aplicación': datos_elemento[3].strip(),
-                            'Marca Producto': datos_elemento[4].split(':')[1].strip() if ':' in datos_elemento[4] else '',
-                            'Origen': datos_elemento[5].split(':')[1].strip() if ':' in datos_elemento[5] else '',
-                            'Precio Oferta': datos_elemento[6].strip(),
-                            'Precio Original': datos_elemento[8].strip() if len(datos_elemento) > 8 else '',
-                            'Busqueda': texto_busqueda,
-                            'Marca Buscada': marca,
-                            'Modelo Buscado': modelo,
-                            'Generacion': generacion,
-                            'Anos': anos,
-                            'Link': href  # <-- Capturamos el link aquí
-                        })
+                    datos_completos.append({
+                        'Código': codigo,
+                        'Nombre Producto': nombre,
+                        'Descripción': descripcion,
+                        'Años Aplicación': anos_aplic,
+                        'Marca Producto': marca_prod,
+                        'Origen': origen,
+                        'Precio Oferta': precio_oferta,
+                        'Precio Original': precio_original,
+                        'Busqueda': texto_busqueda,
+                        'Marca Buscada': marca,
+                        'Modelo Buscado': modelo,
+                        'Link': href
+                    })
 
             except TimeoutException:
                 print(f"No se encontraron productos para: {texto_busqueda}")
@@ -121,8 +123,7 @@ for repuesto in repuestos:
             print(f"Error inesperado en búsqueda {texto_busqueda}: {e}")
             continue
 
-
-# Guardar datos en CSV
+# Guardar resultados
 df_final = pd.DataFrame(datos_completos).drop_duplicates()
 os.makedirs('Data encontrada', exist_ok=True)
 df_final['fecha_carga'] = fecha_hora_actual
@@ -131,12 +132,10 @@ print("Datos guardados en 'Data encontrada/resultados_mundorepuestos.xlsx'")
 
 # Guardar tiempo de ejecución
 fin = time.time()
-duracion = fin - inicio
-duracion_legible = str(datetime.timedelta(seconds=int(duracion)))
-
+dur = fin - inicio
 with open('Data encontrada/tiempo_ejecucion_mundorepuestos.txt', 'w') as f:
-    f.write(f"Tiempo total de ejecucion: {duracion_legible}\n")
-    f.write(f"Duracion en segundos: {duracion:.2f} segundos\n")
+    f.write(f"Tiempo total de ejecución: {str(timedelta(seconds=int(dur)))}\n")
+    f.write(f"Duración en segundos: {dur:.2f}\n")
 
-# Cerrar navegador
+# Cerrar driver
 driver.quit()
