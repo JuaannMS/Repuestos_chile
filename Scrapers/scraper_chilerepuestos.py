@@ -10,14 +10,16 @@ import datetime
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException
+import time
+from datetime import datetime
+
+fecha_hora_actual = datetime.now()
 
 # Guardar inicio de ejecución
 inicio = time.time()
-
 # Funciones para cargar inputs
 def cargar_repuestos():
     df = pd.read_csv('Input Repuestos/input_repuestos.csv')
-    # df= df.head(2)
     return df['repuestos'].dropna().tolist()
 
 def cargar_modelos_marcas():
@@ -27,8 +29,6 @@ def cargar_modelos_marcas():
         if archivo.endswith('.csv'):
             df = pd.read_csv(os.path.join(path, archivo))
             modelos_marcas.extend(df.to_dict('records'))
-
-    modelos_marcas = modelos_marcas[:2]
     return modelos_marcas
 
 # Configurar opciones del navegador
@@ -68,14 +68,14 @@ for repuesto in repuestos:
 
         try:
             # Ingresar texto en input de búsqueda
-            input_busqueda = WebDriverWait(driver, 5).until(
+            input_busqueda = WebDriverWait(driver, 3).until(
                 EC.presence_of_element_located((By.ID, 'Buscador'))
             )
             input_busqueda.clear()
             input_busqueda.send_keys(texto_busqueda)
 
             # Clic en el botón de búsqueda
-            boton_buscar = WebDriverWait(driver, 5).until(
+            boton_buscar = WebDriverWait(driver, 3).until(
                 EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-default btn-lg']"))
             )
             boton_buscar.click()
@@ -84,7 +84,7 @@ for repuesto in repuestos:
             time.sleep(2)
 
             try:
-                productos_element = WebDriverWait(driver, 5).until(
+                productos_element = WebDriverWait(driver, 3).until(
                     EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, 'shop-single-item')]"))
                 )
 
@@ -103,10 +103,9 @@ for repuesto in repuestos:
                     if descripcion_producto and descripcion_producto.strip() not in ["", "Sin descripción"]:
                         datos_completos.append({
                             'Marca Producto': marca_producto,
-                            'Nombre Producto': nombre_producto,
                             'Descripción': descripcion_producto,
+                            'Nombre Producto': nombre_producto,
                             'Precio': precio_producto,
-                            'Código': codigo_producto,
                             'Busqueda': texto_busqueda,
                             'Marca Buscada': marca,
                             'Modelo Buscado': modelo,
@@ -123,11 +122,14 @@ for repuesto in repuestos:
             print(f"Error en búsqueda {texto_busqueda}: {e}")
             continue
 
-# Guardar datos en CSV
+# Guardar datos en CSV  
+
+#
 df_final = pd.DataFrame(datos_completos).drop_duplicates()
 os.makedirs('Data encontrada', exist_ok=True)
-df_final.to_excel('Data encontrada/productos_chilerepuestos.xlsx', index=False)
-print("Datos guardados en 'Data encontrada/productos_chilerepuestos.csv'")
+df_final['fecha_carga'] = fecha_hora_actual
+df_final.to_excel('Data encontrada/resultados_chilerepuestos.xlsx', index=False)
+print("Datos guardados en 'Data encontrada/resultados_chilerepuestos.xlsx'")
 
 # Guardar tiempo de ejecución
 fin = time.time()

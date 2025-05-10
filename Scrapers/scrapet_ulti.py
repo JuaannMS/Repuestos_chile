@@ -10,6 +10,9 @@ import datetime
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from datetime import datetime
+
+fecha_hora_actual = datetime.now()
 
 # Guardar inicio de ejecución
 inicio = time.time()
@@ -97,10 +100,10 @@ for repuesto in repuestos:
                         compatibilidad = textos[-1] if textos else ""
                         
                         datos_completos.append({
-                            'Marca': marca_badge,
+                            'Marca Buscada': marca_badge,
                             'Origen': origen_badge,
                             'SKU': sku,
-                            'Nombre': nombre,
+                            'Nombre Producto': nombre,
                             'Precio': precio,
                             'Características': "; ".join(caracteristicas),
                             'Compatibilidad': compatibilidad,
@@ -123,6 +126,7 @@ for repuesto in repuestos:
 df_final = pd.DataFrame(datos_completos).drop_duplicates()
 os.makedirs('Data encontrada', exist_ok=True)
 output_path = 'Data encontrada/resultados_ulti.xlsx'
+df_final['fecha_carga'] = fecha_hora_actual
 df_final.to_excel(output_path, index=False)
 print(f"Datos guardados en '{output_path}'")
 

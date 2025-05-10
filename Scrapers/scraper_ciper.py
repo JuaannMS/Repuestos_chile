@@ -10,9 +10,11 @@ import datetime
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from datetime import datetime
 
 # Guardar inicio de ejecución
 inicio = time.time()
+fecha_hora_actual = datetime.now()
 
 # Funciones para cargar inputs
 def cargar_repuestos():
@@ -119,6 +121,7 @@ for repuesto in repuestos:
 # Guardar datos en CSV
 df_resultados = pd.DataFrame(datos_completos).drop_duplicates()
 os.makedirs('Data encontrada', exist_ok=True)
+df_resultados['fecha_carga'] = df_resultados
 df_resultados.to_excel('Data encontrada/resultados_ciper.xlsx', index=False)
 print("Datos guardados en 'Data encontrada/resultados_ciper.csv'")
 

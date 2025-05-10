@@ -10,9 +10,12 @@ import datetime
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from datetime import datetime
+
 
 # Guardar inicio de ejecución
 inicio = time.time()
+fecha_hora_actual = datetime.now()
 
 # Funciones para cargar inputs
 def cargar_repuestos():
@@ -55,7 +58,7 @@ for repuesto in repuestos:
         texto_busqueda = f"{repuesto} {marca} {modelo}"
 
         try:
-            wait = WebDriverWait(driver, 5)
+            wait = WebDriverWait(driver, 3)
 
             # Buscar input de búsqueda
             input_element = wait.until(EC.presence_of_element_located((By.ID, "smartSearchId")))
@@ -115,6 +118,7 @@ for repuesto in repuestos:
 # Guardar datos en Excel
 df_final = pd.DataFrame(datos_completos).drop_duplicates()
 os.makedirs('Data encontrada', exist_ok=True)
+df_final['fecha_carga'] = fecha_hora_actual
 df_final.to_excel('Data encontrada/resultados_autoplanet.xlsx', index=False)
 print("Datos guardados en 'Data encontrada/resultados_autoplanet_corregido.xlsx'")
 

@@ -10,9 +10,11 @@ import datetime
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+from datetime import datetime
 
 # Guardar inicio de ejecución
 inicio = time.time()
+fecha_hora_actual = datetime.now()
 
 # Funciones para cargar inputs
 def cargar_repuestos():
@@ -83,7 +85,7 @@ for repuesto in repuestos:
                     fabricante = producto.find_element(By.CLASS_NAME, "brand").get_attribute('aria-label').strip()
 
                     datos_completos.append({
-                        'Texto Busqueda': texto_busqueda,
+                        'Busqueda': texto_busqueda,
                         'Nombre Producto': nombre,
                         'Precio': precio,
                         'OEM': oem,
@@ -91,7 +93,7 @@ for repuesto in repuestos:
                         'Marca Buscada': marca,
                         'Modelo Buscado': modelo,
                         'Generacion': generacion,
-                        'Años': anos,
+                        'Anos': anos,
                         'Link': link
                     })
 
@@ -107,6 +109,7 @@ for repuesto in repuestos:
 df_final = pd.DataFrame(datos_completos).drop_duplicates()
 os.makedirs('Data encontrada', exist_ok=True)
 output_path = 'Data encontrada/resultados_casaderepuestos.xlsx'
+df_final['fecha_carga'] = fecha_hora_actual
 df_final.to_excel(output_path, index=False)
 print(f"Datos guardados en '{output_path}'")
 

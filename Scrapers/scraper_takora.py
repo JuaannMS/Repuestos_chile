@@ -6,13 +6,31 @@ from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
 import time
 import os
-import datetime
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+from datetime import datetime, timedelta
+import re
+
+fecha_hora_actual = datetime.now()
 
 # Guardar inicio de ejecución
 inicio = time.time()
+
+
+def extraer_precios(texto):
+    # Buscar precios con regex
+    precios_encontrados = re.findall(r'\$?\s?[\d.,]+', str(texto))
+    precios_limpios = [re.sub(r'[^\d]', '', p) for p in precios_encontrados]
+
+    if len(precios_limpios) >= 2:
+        return pd.Series([precios_limpios[0], precios_limpios[1]])
+    elif len(precios_limpios) == 1:
+        return pd.Series([precios_limpios[0], precios_limpios[0]])
+    else:
+        return pd.Series([None, None])
+
+
 
 # Funciones para cargar inputs
 def cargar_repuestos():
@@ -55,7 +73,7 @@ for repuesto in repuestos:
         texto_busqueda = f"{repuesto} {marca} {modelo}"
 
         try:
-            wait = WebDriverWait(driver, 5)
+            wait = WebDriverWait(driver, 3)
 
             # Buscar el input de búsqueda correcto
             input_element = wait.until(EC.presence_of_element_located((By.ID, "buscar")))
@@ -75,22 +93,26 @@ for repuesto in repuestos:
                 for producto in productos:
                     link = producto.find_element(By.TAG_NAME, 'a').get_attribute('href')
                     nombre = producto.find_element(By.TAG_NAME, 'a').text.strip()
-                    precio = producto.find_element(By.CLASS_NAME, 'Price_listing').text.strip()
+                    precio_txt = producto.find_element(By.CLASS_NAME, 'Price_listing').text.strip()
                     oem = producto.find_element(By.CLASS_NAME, 'OEM_listing').text.replace('OEM:', '').strip()
                     fabricante = producto.find_element(By.CLASS_NAME, 'Manufacturer_listing').text.strip()
 
+                    
+
+                    # Agregar a la lista
                     datos_completos.append({
-                        'Texto Busqueda': texto_busqueda,
+                        'Busqueda': texto_busqueda,
                         'Nombre Producto': nombre,
-                        'Precio': precio,
+                        'Precio': precio_txt,
                         'OEM': oem,
                         'Marca Fabricante': fabricante,
                         'Marca Buscada': marca,
                         'Modelo Buscado': modelo,
                         'Generacion': generacion,
-                        'Años': anos,
+                        'Anos': anos,
                         'Link': link
                     })
+
 
             except TimeoutException:
                 print(f"No se encontraron productos para: {texto_busqueda}")
@@ -104,13 +126,21 @@ for repuesto in repuestos:
 df_final = pd.DataFrame(datos_completos).drop_duplicates()
 os.makedirs('Data encontrada', exist_ok=True)
 output_path = 'Data encontrada/resultados_takora.xlsx'
+
+# df_final = pd.read_excel('C:/Users/jmmsa/OneDrive/Escritorio/Scraper Repuestos/Data encontrada/resultados_takora.xlsx')
+# df_final.rename(columns={'Precio': 'Precio Normal', 'Precio Normal': 'Precio'}, inplace=True)
+
+# Aplicar la función a df_final['Precio']
+df_final[['Precio Normal', 'Precio']] = df_final['Precio'].apply(extraer_precios)
+
+df_final['fecha_carga'] = fecha_hora_actual
 df_final.to_excel(output_path, index=False)
 print(f"Datos guardados en '{output_path}'")
 
 # Guardar tiempo de ejecución
 fin = time.time()
 duracion = fin - inicio
-duracion_legible = str(datetime.timedelta(seconds=int(duracion)))
+duracion_legible = str(timedelta(seconds=int(duracion)))
 with open('Data encontrada/tiempo_ejecucion_takora.txt', 'w') as f:
     f.write(f"Tiempo total de ejecución: {duracion_legible}\n")
     f.write(f"Duración en segundos: {duracion:.2f} segundos\n")

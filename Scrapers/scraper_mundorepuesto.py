@@ -10,6 +10,9 @@ import datetime
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from datetime import datetime
+
+fecha_hora_actual = datetime.now()
 
 # Guardar inicio de ejecución
 inicio = time.time()
@@ -56,11 +59,7 @@ modelos_marcas = cargar_modelos_marcas()
 
 datos_completos = []
 
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
-import time
+
 
 # Recorrer combinaciones de repuesto + modelo + marca
 for repuesto in repuestos:
@@ -73,7 +72,7 @@ for repuesto in repuestos:
         texto_busqueda = f"{repuesto} {marca} {modelo}"
 
         try:
-            wait = WebDriverWait(driver, 5)
+            wait = WebDriverWait(driver, 3)
 
             # Buscar input
             input_busqueda = wait.until(EC.visibility_of_element_located((By.ID, 'txtBuscar')))
@@ -88,7 +87,7 @@ for repuesto in repuestos:
 
             try:
                 # Capturar todos los productos encontrados
-                productos_links = WebDriverWait(driver, 5).until(
+                productos_links = WebDriverWait(driver, 3).until(
                     EC.presence_of_all_elements_located((By.CLASS_NAME, 'linkVerPrd'))
                 )
 
@@ -106,7 +105,6 @@ for repuesto in repuestos:
                             'Origen': datos_elemento[5].split(':')[1].strip() if ':' in datos_elemento[5] else '',
                             'Precio Oferta': datos_elemento[6].strip(),
                             'Precio Original': datos_elemento[8].strip() if len(datos_elemento) > 8 else '',
-                            'Descuento': datos_elemento[10].strip() if len(datos_elemento) > 10 else '',
                             'Busqueda': texto_busqueda,
                             'Marca Buscada': marca,
                             'Modelo Buscado': modelo,
@@ -127,8 +125,9 @@ for repuesto in repuestos:
 # Guardar datos en CSV
 df_final = pd.DataFrame(datos_completos).drop_duplicates()
 os.makedirs('Data encontrada', exist_ok=True)
-df_final.to_excel('Data encontrada/productos_mundorepuestos.xlsx', index=False)
-print("Datos guardados en 'Data encontrada/productos_mundorepuestos.csv'")
+df_final['fecha_carga'] = fecha_hora_actual
+df_final.to_excel('Data encontrada/resultados_mundorepuestos.xlsx', index=False)
+print("Datos guardados en 'Data encontrada/resultados_mundorepuestos.xlsx'")
 
 # Guardar tiempo de ejecución
 fin = time.time()
