@@ -24,7 +24,7 @@ def cargar_repuestos():
 def cargar_modelos_marcas():
     path = 'Modelos y marcas'
     archivos_encontrados = [archivo for archivo in os.listdir(path) if archivo.endswith('.csv')]
-    archivos_a_leer = archivos_encontrados[:2]  # Solo los dos primeros archivos
+    archivos_a_leer = archivos_encontrados#[:2]  # Solo los dos primeros archivos
 
     modelos_marcas = []
     for archivo in archivos_a_leer:
@@ -86,8 +86,17 @@ for repuesto in repuestos:
                 # Capturar todos los productos <a>
                 productos_links = gallery.find_elements(By.XPATH, ".//a[contains(@class, 'vtex-product-summary-2-x-clearLink')]")
 
+               
+
                 for producto in productos_links:
                     href = producto.get_attribute('href')
+
+                    try:
+                        img_el = producto.find_element(By.TAG_NAME, 'img')
+                        img_url = img_el.get_attribute('src')
+                    except NoSuchElementException:
+                        img_url = "" 
+
                     texto_producto = producto.text.strip().split('\n')
 
                     if len(texto_producto) >= 2:
@@ -105,7 +114,8 @@ for repuesto in repuestos:
                             'Busqueda': texto_busqueda,
                             'Marca Buscada': marca,
                             'Modelo Buscado': modelo,
-                            'Link': href  # <-- Capturamos el link aquí
+                            'Link': href,
+                            'Imagen' : img_url
                         })
 
             except TimeoutException:

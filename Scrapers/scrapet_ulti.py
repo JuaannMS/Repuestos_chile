@@ -10,7 +10,7 @@ import datetime
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from datetime import datetime
+from datetime import datetime, timedelta
 
 fecha_hora_actual = datetime.now()
 
@@ -78,6 +78,11 @@ for repuesto in repuestos:
                     try:
                         # Link del producto
                         link = producto.find_element(By.CSS_SELECTOR, ".product-card__image a").get_attribute("href")
+
+                        try:
+                            img_url = producto.find_element(By.CSS_SELECTOR, ".product-card__image img.image__tag").get_attribute("src")
+                        except NoSuchElementException:
+                            img_url = ''
                         
                         # Badges de marca y origen
                         marca_badge = producto.find_element(By.CSS_SELECTOR, ".product-card__badges .tag-badge--sale").text.strip()
@@ -107,7 +112,8 @@ for repuesto in repuestos:
                             'Precio': precio,
                             'Características': "; ".join(caracteristicas),
                             'Compatibilidad': compatibilidad,
-                            'Link': link
+                            'Link': link,
+                            'Imagen': img_url
                         })
 
                     except Exception as e:
@@ -133,7 +139,7 @@ print(f"Datos guardados en '{output_path}'")
 # Guardar tiempo de ejecución
 fin = time.time()
 duracion = fin - inicio
-duracion_legible = str(datetime.timedelta(seconds=int(duracion)))
+duracion_legible = str(timedelta(seconds=int(duracion)))
 with open('Data encontrada/tiempo_ejecucion_ulti.txt', 'w') as f:
     f.write(f"Tiempo total de ejecucion: {duracion_legible}\n")
     f.write(f"Duracion en segundos: {duracion:.2f} segundos\n")

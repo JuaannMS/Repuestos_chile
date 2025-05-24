@@ -92,13 +92,17 @@ for repuesto in repuestos:
                         except NoSuchElementException:
                             precio_producto = "No disponible"
 
+                        img_element = producto.find_element(By.XPATH, ".//img[contains(@class, 'img-plp')]")
+                        img_url = img_element.get_attribute('src')
+
                         datos_completos.append({
                             'Nombre Producto': nombre_producto,
                             'Precio': precio_producto,
                             'Busqueda': texto_busqueda,
                             'Marca Buscada': marca,
                             'Modelo Buscado': modelo,
-                            'Link': link_producto
+                            'Link': link_producto,
+                            'Imagen': img_url
                         })
 
                     except Exception as e:

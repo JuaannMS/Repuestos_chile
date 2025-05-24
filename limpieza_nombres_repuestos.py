@@ -1,63 +1,85 @@
-import pandas as pd
+import json
 import re
+import pandas as pd
 import requests
+from urllib.parse import urlparse
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
 
-# 1. Cargar CSV
-df = pd.read_csv("Data consolidada/df_nombres_duplicados.csv")
+# ——— 1. Carga de configuración —————————————————————————
+with open("extractors.json", encoding="utf-8") as f:
+    config = json.load(f)
 
-# 2. Función para extraer detalles desde la página
-def extraer_detalles(url: str) -> dict:
-    resp = requests.get(url, timeout=10)
-    resp.raise_for_status()
-    soup = BeautifulSoup(resp.text, "lxml")
+# ——— 2. Funciones auxiliares ——————————————————————————
 
-    marca = soup.select_one(".product-brand") and soup.select_one(".product-brand").get_text(strip=True)
-    modelo = soup.select_one(".product-model") and soup.select_one(".product-model").get_text(strip=True)
-    num_parte = soup.select_one("#part-number") and soup.select_one("#part-number").get_text(strip=True)
-    categoria = soup.select_one(".breadcrumb li:nth-last-child(2)") and \
-                soup.select_one(".breadcrumb li:nth-last-child(2)").get_text(strip=True)
+def generar_slug_name(url: str) -> str:
+    """Extrae y formatea el slug de la URL como nombre legible."""
+    path = urlparse(url).path.strip("/").split("/")[0].rstrip("-")
+    core = re.sub(r"-\d+$", "", path)
+    return core.replace("-", " ").title()
 
-    return {
-        "marca": marca,
-        "modelo": modelo,
-        "num_parte": num_parte,
-        "categoría": categoria
-    }
+def extraer_por_css(soup: BeautifulSoup, selectors: dict) -> dict:
+    """Lee múltiples campos usando selectores CSS."""
+    detalles = {}
+    for key, sel in selectors.items():
+        tag = soup.select_one(sel)
+        detalles[key] = tag.get_text(strip=True) if tag else None
+    return detalles
 
-# 3. Generador de nombre
-def generar_nombre(detalles: dict) -> str:
-    piezas = [
-        detalles.get("marca"),
-        detalles.get("modelo"),
-        detalles.get("categoría"),
-        detalles.get("num_parte") and f"P.N.{detalles['num_parte']}"
-    ]
-    piezas = [re.sub(r"[\s––]+", " ", p).strip() for p in piezas if p]
-    return " – ".join(piezas)
+# ——— 3. Lógica principal ——————————————————————————————
 
-# 4. Loop principal con progreso
-nuevos_nombres = []
-total = len(df)
+# Ajusta el nombre de archivo y la columna de URL según tu CSV
+INPUT_CSV    = "Data consolidada/df_nombres_duplicados.csv"
+OUTPUT_FILE  = "Data consolidada/df_nombres_duplicados_modificados.xlsx"
+URL_COLUMN   = "Link"
+
+df    = pd.read_csv(INPUT_CSV)
+df = df.head(10)
+nombres = []
+total   = len(df)
 
 for idx, row in df.iterrows():
-    # Mensaje de progreso cada 100 filas
-    if idx != 0 and idx % 100 == 0:
-        print(f"→ Procesadas {idx} de {total} URLs")
+    url     = row[URL_COLUMN]
+    dominio = urlparse(url).netloc
+    rule    = config.get(dominio, {})
 
-    url = row["Link"]  # Ajusta si tu columna de URLs se llama distinto
-    try:
-        detalles = extraer_detalles(url)
-        nuevos_nombres.append(generar_nombre(detalles))
-    except Exception as e:
-        print(f"[Fila {idx}] Error al procesar {url}: {e}")
-        nuevos_nombres.append(row["nombre_actual"])  # Ajusta si tu columna de nombre original se llama distinto
+    # 3.1. Extraer nombre según el tipo de rule
+    if rule.get("type") == "slug":
+        name = generar_slug_name(url)
 
-# Mensaje final
-print(f"✅ Completado: procesadas {total} URLs.")
+    else:
+        # peticion y parseo
+        resp = requests.get(url, timeout=10)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "lxml")
 
-# 5. Guardar resultado
-df["nombre_enriquecido"] = nuevos_nombres
-df.to_excel("Data consolidada/df_nombres_duplicados_modificados.xlsx", index=False)
-print("¡Listo! Archivo guardado con nombres enriquecidos.")
+        if rule.get("type") == "css":
+            detalles = extraer_por_css(soup, rule["selectors"])
+        elif rule.get("type") == "custom":
+            mod  = __import__(rule["module"], fromlist=[rule["function"]])
+            func = getattr(mod, rule["function"])
+            detalles = func(soup)
+        else:
+            detalles = {}
+
+        # formatear piezas en un solo nombre
+        piezas = [
+            detalles.get("marca"),
+            detalles.get("modelo"),
+            detalles.get("categoría"),
+            detalles.get("num_parte") and f"P.N.{detalles['num_parte']}"
+        ]
+        piezas = [re.sub(r"[\s––]+", " ", p).strip() for p in piezas if p]
+        name = " – ".join(piezas)
+
+    nombres.append(name or row.get("Nombre Producto", ""))
+
+    # progreso cada 100
+    if (idx + 1) % 100 == 0:
+        print(f"→ Procesadas {idx+1} de {total} URLs")
+
+# ——— 4. Guardar resultados ————————————————————————————
+
+df["nombre_enriquecido"] = nombres
+df.to_excel(OUTPUT_FILE, index=False)
+
+print(f"✅ Completado: procesadas {total} URLs. Salida en {OUTPUT_FILE}")

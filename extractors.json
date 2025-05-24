@@ -1,0 +1,22 @@
+{
+  "www.ciper.cl": {
+    "type": "slug"
+  },
+  "chilerepuestos.com": {
+    "type": "css",
+    "selectors": {
+      "marca":     ".product-details-list ul li:nth-child(3) span",
+      "modelo":    ".product-details-list ul li:nth-child(7) span",
+      "categoría": ".product-details-list ul li:nth-child(4) span"
+    }
+  },
+  "otro-dominio.cl": {
+    "type": "css",
+    "selectors": {
+      "marca":     ".brand-name",
+      "modelo":    ".model-info",
+      "num_parte": "#sku-part",
+      "categoría": ".breadcrumb li:last-child"
+    }
+  }
+}

@@ -9,7 +9,7 @@ import os
 import datetime
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 import time
 from datetime import datetime, timedelta
 
@@ -64,61 +64,71 @@ for repuesto in repuestos:
         generacion = str(modelo_marca.get('generacion', ''))
         anos = modelo_marca.get('anos', '')
 
-        texto_busqueda = f"{repuesto} {marca} {modelo}"
+        texto_busq = f"{repuesto} {marca} {modelo}"
+
+        # Construir query URL-friendly
+        query = "+".join(texto_busq.split())
+        # Si quieres recorrer varias páginas, puedes variar el número en lugar de 1
+        page = 1
+        search_url = f"https://chilerepuestos.com/{page}/search?Buscar={query}"
+
 
         try:
-            # Ingresar texto en input de búsqueda
-            input_busqueda = WebDriverWait(driver, 3).until(
-                EC.presence_of_element_located((By.ID, 'Buscador'))
-            )
-            input_busqueda.clear()
-            input_busqueda.send_keys(texto_busqueda)
 
-            # Clic en el botón de búsqueda
-            boton_buscar = WebDriverWait(driver, 3).until(
-                EC.element_to_be_clickable((By.XPATH, "//button[@class='btn btn-default btn-lg']"))
-            )
-            boton_buscar.click()
+            driver.get(search_url)
 
-            # Esperar resultados
-            time.sleep(2)
+            time.sleep(3)
+
 
             try:
-                productos_element = WebDriverWait(driver, 3).until(
-                    EC.presence_of_all_elements_located((By.XPATH, "//div[contains(@class, 'shop-single-item')]"))
+                productos_element = WebDriverWait(driver, 5).until(
+                    EC.presence_of_all_elements_located(
+                        (By.XPATH, "//div[contains(@class, 'shop-single-item')]")
+                    )
                 )
+            except TimeoutException:
+                print(f"No se encontraron productos para: {texto_busq}")
+                continue  
 
-                for producto in productos_element:
-                    # 🔥 Buscar directamente sin try-except individuales
-                    link_element = producto.find_element(By.XPATH, ".//div[@class='product-img']/a")
-                    href = link_element.get_attribute('href')
+            for producto in productos_element:
+                # 🔥 Buscar directamente sin try-except individuales
+                link_element = producto.find_element(By.XPATH, ".//div[@class='product-img']/a")
+                href = link_element.get_attribute('href')
 
-                    marca_producto = producto.find_element(By.XPATH, ".//div[@class='product-card__badges']/div[contains(@class, 'tag-badge--sale')]").text.strip()
-                    nombre_producto = producto.find_element(By.XPATH, ".//div[@class='product-content']/h2/a").text.strip()
-                    descripcion_producto = producto.find_element(By.XPATH, ".//div[@class='product-content']/div").text.strip()
-                    precio_producto = producto.find_element(By.XPATH, ".//div[@class='pro-price']/span[contains(@class, 'new-price')]").text.strip()
-                    codigo_producto = producto.find_element(By.XPATH, ".//a[contains(@class, 'add-to-wishlist')]").text.strip()
+                marca_producto = producto.find_element(By.XPATH, ".//div[@class='product-card__badges']/div[contains(@class, 'tag-badge--sale')]").text.strip()
+                nombre_producto = producto.find_element(By.XPATH, ".//div[@class='product-content']/h2/a").text.strip()
+                descripcion_producto = producto.find_element(By.XPATH, ".//div[@class='product-content']/div").text.strip()
+                precio_producto = producto.find_element(By.XPATH, ".//div[@class='pro-price']/span[contains(@class, 'new-price')]").text.strip()
+                codigo_producto = producto.find_element(By.XPATH, ".//a[contains(@class, 'add-to-wishlist')]").text.strip()
 
-                    # Solo guardar si hay descripción válida
-                    if descripcion_producto and descripcion_producto.strip() not in ["", "Sin descripción"]:
-                        datos_completos.append({
-                            'Marca Producto': marca_producto,
-                            'Descripción': descripcion_producto,
-                            'Nombre Producto': nombre_producto,
-                            'Precio': precio_producto,
-                            'Busqueda': texto_busqueda,
-                            'Marca Buscada': marca,
-                            'Modelo Buscado': modelo,
-                            'Link': href
-                        })
+                img_el   = producto.find_element(By.CLASS_NAME, "primary-img")
+                src      = img_el.get_attribute("src")              # puede ser "/img/…"
+                if src.startswith("/"):
+                    img_url = "https://chilerepuestos.com" + src
+                else:
+                    img_url = src
 
-            except NoSuchElementException:
-                print(f"No se encontraron productos para: {texto_busqueda}")
-                continue
+                # Solo guardar si hay descripción válida
+                if descripcion_producto and descripcion_producto.strip() not in ["", "Sin descripción"]:
+                    datos_completos.append({
+                        'Marca Producto': marca_producto,
+                        'Descripción': descripcion_producto,
+                        'Nombre Producto': nombre_producto,
+                        'Precio': precio_producto,
+                        'Busqueda': texto_busq,
+                        'Marca Buscada': marca,
+                        'Modelo Buscado': modelo,
+                        'Link': href,
+                        'Imagen': img_url,
+
+                    })
 
         except Exception as e:
-            print(f"Error en búsqueda {texto_busqueda}: {e}")
+            # captura cualquier otro error y continúa
+            print(f"Error en búsqueda {texto_busq}: {e}")
             continue
+
+     
 
 # Guardar datos en CSV  
 

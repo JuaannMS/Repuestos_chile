@@ -25,7 +25,7 @@ def cargar_repuestos():
 def cargar_modelos_marcas():
     path = 'Modelos y marcas'
     archivos = [f for f in os.listdir(path) if f.endswith('.csv')]
-    archivos = archivos[:2]  # solo los dos primeros
+    #archivos = archivos[:2]  # solo los dos primeros
     records = []
     for archivo in archivos:
         df = pd.read_csv(os.path.join(path, archivo))
@@ -52,6 +52,7 @@ time.sleep(2)
 repuestos = cargar_repuestos()
 modelos_marcas = cargar_modelos_marcas()
 datos_completos = []
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 # Bucle principal
 for repuesto in repuestos:
@@ -63,7 +64,8 @@ for repuesto in repuestos:
 
         texto_busqueda = f"{repuesto} {marca} {modelo}"
         try:
-            wait_short = WebDriverWait(driver, 3)
+            wait_short = WebDriverWait(driver, 5)
+
             # Buscar y escribir en el input
             inp = wait_short.until(EC.visibility_of_element_located((By.ID, 'txtBuscar')))
             inp.clear()
@@ -78,41 +80,72 @@ for repuesto in repuestos:
                 productos_links = wait_short.until(
                     EC.presence_of_all_elements_located((By.CLASS_NAME, 'linkVerPrd'))
                 )
+
                 for link in productos_links:
                     href = link.get_attribute('href')
-                    # Contenedor de datos dentro del link
+
+                    # SUBIR 2 NIVELES desde <a class="linkVerPrd"> → div.producto → td → tr
+                    fila = link.find_element(By.XPATH, "./ancestor::tr")
+
+                    # Buscar imagen dentro de la columna 'col-img-productoDesk' en esa fila
+                    try:
+                        img_el = fila.find_element(By.XPATH, ".//td[contains(@class, 'col-img-productoDesk')]//img")
+                        img_url = img_el.get_attribute('src')
+                    except NoSuchElementException:
+                        img_url = ''
+
+                    # Extraer datos del producto desde el contenedor
                     container = link.find_element(By.XPATH, ".//div[@id='datos-producto']")
-                    # Código
-                    codigo = container.find_element(By.CSS_SELECTOR, "p.codigo_producto").text
-                    # Nombre
-                    nombre = container.find_element(By.CSS_SELECTOR, "span.titulo-producto").text
-                    # Descripción (segundo span hijo)
+
+                    try:
+                        codigo = container.find_element(By.CSS_SELECTOR, "p.codigo_producto").text
+                    except NoSuchElementException:
+                        codigo = ''
+
+                    try:
+                        nombre = container.find_element(By.CSS_SELECTOR, "span.titulo-producto").text
+                    except NoSuchElementException:
+                        nombre = ''
+
                     spans = container.find_elements(By.XPATH, "./span")
                     descripcion = spans[1].text if len(spans) > 1 else ''
-                    # Años
-                    anos_aplic = container.find_element(By.CSS_SELECTOR, "span.years").text
-                    # Marca del producto
-                    marca_prod = container.find_element(By.CSS_SELECTOR, "span.nameMarca").text
-                    # Origen
-                    origen = container.find_element(By.CSS_SELECTOR, "span.productoOrigen").text
-                    # Precio oferta desde atributo
-                    precio_oferta = link.get_attribute("data-priceoffer")
-                    # Precio original
-                    precio_original = container.find_element(By.CSS_SELECTOR, "span.precio_original").text
+
+                    try:
+                        anos_aplic = container.find_element(By.CSS_SELECTOR, "span.years").text
+                    except NoSuchElementException:
+                        anos_aplic = ''
+
+                    try:
+                        marca_prod = container.find_element(By.CSS_SELECTOR, "span.nameMarca").text
+                    except NoSuchElementException:
+                        marca_prod = ''
+
+                    try:
+                        origen = container.find_element(By.CSS_SELECTOR, "span.productoOrigen").text
+                    except NoSuchElementException:
+                        origen = ''
+
+                    try:
+                        precio_original = container.find_element(By.CSS_SELECTOR, "span.precio_original").text
+                    except NoSuchElementException:
+                        precio_original = ''
+
+                    precio_oferta = link.get_attribute("data-priceoffer") or ''
 
                     datos_completos.append({
-                        'Código': codigo,
-                        'Nombre Producto': nombre,
-                        'Descripción': descripcion,
-                        'Años Aplicación': anos_aplic,
-                        'Marca Producto': marca_prod,
-                        'Origen': origen,
-                        'Precio Oferta': precio_oferta,
-                        'Precio Original': precio_original,
-                        'Busqueda': texto_busqueda,
-                        'Marca Buscada': marca,
-                        'Modelo Buscado': modelo,
-                        'Link': href
+                        'Código':           codigo,
+                        'Nombre Producto':  nombre,
+                        'Descripción':      descripcion,
+                        'Años Aplicación':  anos_aplic,
+                        'Marca Producto':   marca_prod,
+                        'Origen':           origen,
+                        'Precio Oferta':    precio_oferta,
+                        'Precio Original':  precio_original,
+                        'Busqueda':         texto_busqueda,
+                        'Marca Buscada':    marca,
+                        'Modelo Buscado':   modelo,
+                        'Link':             href,
+                        'Imagen':           img_url
                     })
 
             except TimeoutException:
@@ -122,6 +155,7 @@ for repuesto in repuestos:
         except Exception as e:
             print(f"Error inesperado en búsqueda {texto_busqueda}: {e}")
             continue
+
 
 # Guardar resultados
 df_final = pd.DataFrame(datos_completos).drop_duplicates()

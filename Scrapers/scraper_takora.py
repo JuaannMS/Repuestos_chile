@@ -62,6 +62,7 @@ repuestos = cargar_repuestos()
 modelos_marcas = cargar_modelos_marcas()
 
 datos_completos = []
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 for repuesto in repuestos:
     for modelo_marca in modelos_marcas:
@@ -71,35 +72,62 @@ for repuesto in repuestos:
         anos = modelo_marca.get('anos', '')
 
         texto_busqueda = f"{repuesto} {marca} {modelo}"
+        query = "+".join(texto_busqueda.split())
+        url = f"https://www.takora.cl/autos/repuestos/advanced_search_result.php?keywords={query}"
 
         try:
+            driver.get(url)
             wait = WebDriverWait(driver, 3)
-
-            # Buscar el input de búsqueda correcto
-            input_element = wait.until(EC.presence_of_element_located((By.ID, "buscar")))
-            input_element.clear()
-            input_element.send_keys(texto_busqueda)
-            input_element.send_keys(Keys.RETURN)
-
-            time.sleep(3)
+            time.sleep(2)  # Dejar que cargue
 
             try:
-                productos = wait.until(EC.presence_of_all_elements_located((By.XPATH, "//td[contains(@class,'productListing-data')]")))
+                productos = wait.until(
+                    EC.presence_of_all_elements_located((By.XPATH, "//td[contains(@class,'productListing-data')]"))
+                )
 
                 if not productos:
                     print(f"No se encontraron productos para: {texto_busqueda}")
                     continue
 
                 for producto in productos:
-                    link = producto.find_element(By.TAG_NAME, 'a').get_attribute('href')
-                    nombre = producto.find_element(By.TAG_NAME, 'a').text.strip()
-                    precio_txt = producto.find_element(By.CLASS_NAME, 'Price_listing').text.strip()
-                    oem = producto.find_element(By.CLASS_NAME, 'OEM_listing').text.replace('OEM:', '').strip()
-                    fabricante = producto.find_element(By.CLASS_NAME, 'Manufacturer_listing').text.strip()
+                    links_info = producto.find_elements(By.XPATH, ".//a[contains(@href,'product_info.php')]")
 
-                    
+                    if len(links_info) >= 2:
+                        name_link = links_info[1]
+                    elif links_info:
+                        name_link = links_info[0]
+                    else:
+                        continue
 
-                    # Agregar a la lista
+                    nombre = name_link.text.strip()
+                    link = name_link.get_attribute('href')
+
+                    try:
+                        img_el = producto.find_element(By.XPATH, ".//img")
+                        img_src = img_el.get_attribute("src")
+                        # Convertir a URL completa si es relativa
+                        if img_src.startswith("http"):
+                            img_url = img_src
+                        else:
+                            img_url = "https://www.takora.cl/autos/repuestos/" + img_src.lstrip("/")
+                    except NoSuchElementException:
+                        img_url = ''
+
+                    try:
+                        precio_txt = producto.find_element(By.CLASS_NAME, 'Price_listing').text.strip()
+                    except NoSuchElementException:
+                        precio_txt = ''
+
+                    try:
+                        oem = producto.find_element(By.CLASS_NAME, 'OEM_listing').text.replace('OEM:', '').strip()
+                    except NoSuchElementException:
+                        oem = ''
+
+                    try:
+                        fabricante = producto.find_element(By.CLASS_NAME, 'Manufacturer_listing').text.strip()
+                    except NoSuchElementException:
+                        fabricante = ''
+
                     datos_completos.append({
                         'Busqueda': texto_busqueda,
                         'Nombre Producto': nombre,
@@ -108,9 +136,9 @@ for repuesto in repuestos:
                         'Marca Fabricante': fabricante,
                         'Marca Buscada': marca,
                         'Modelo Buscado': modelo,
-                        'Link': link
+                        'Link': link,
+                        'Imagen' : img_url
                     })
-
 
             except TimeoutException:
                 print(f"No se encontraron productos para: {texto_busqueda}")
@@ -120,6 +148,7 @@ for repuesto in repuestos:
             print(f"Error inesperado en búsqueda '{texto_busqueda}': {e}")
             continue
 
+
 # Guardar datos en Excel
 df_final = pd.DataFrame(datos_completos).drop_duplicates()
 os.makedirs('Data encontrada', exist_ok=True)
@@ -128,8 +157,8 @@ output_path = 'Data encontrada/resultados_takora.xlsx'
 # df_final = pd.read_excel('C:/Users/jmmsa/OneDrive/Escritorio/Scraper Repuestos/Data encontrada/resultados_takora.xlsx')
 # df_final.rename(columns={'Precio': 'Precio Normal', 'Precio Normal': 'Precio'}, inplace=True)
 
-# Aplicar la función a df_final['Precio']
-df_final[['Precio Normal', 'Precio']] = df_final['Precio'].apply(extraer_precios)
+# # Aplicar la función a df_final['Precio']
+# df_final[['Precio Normal', 'Precio']] = df_final['Precio'].apply(extraer_precios)
 
 df_final['fecha_carga'] = fecha_hora_actual
 df_final.to_excel(output_path, index=False)
