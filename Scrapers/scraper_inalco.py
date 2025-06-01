@@ -50,7 +50,6 @@ repuestos = cargar_repuestos()
 modelos_marcas = cargar_modelos_marcas()
 
 datos_completos = []
-
 for repuesto in repuestos:
     for modelo_marca in modelos_marcas:
         marca_text = modelo_marca.get('marca', '')
@@ -59,61 +58,57 @@ for repuesto in repuestos:
         print(f"Buscando: {texto_busqueda}")
 
         try:
-            # Armar URL
-            query = texto_busqueda.strip().replace(' ', '+')
-            search_url = f"https://emgi.cl/search?type=product&q={query}"
+            query = texto_busqueda.strip().replace(" ", "%20")
+            search_url = f"https://www.inalcotiendaonline.cl/productos?SearchTextValue={query}"
             driver.get(search_url)
 
             wait = WebDriverWait(driver, 3)
-            productos = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.col-12.col-sm-6.col-md-4.col-lg-3")))
+            productos = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, "div.products-list__item")))
 
             if not productos:
                 print(f"No se encontraron productos para: {texto_busqueda}")
                 continue
 
             for producto in productos:
+                
+                nombre = producto.find_element(By.CSS_SELECTOR, ".product-card__name").text.strip()
+
+                link = producto.find_element(By.CSS_SELECTOR, "a.image__body").get_attribute("href")
+                link = f"https://www.inalcotiendaonline.cl{link}" if link.startswith("/") else link
+
                 try:
-                    nombre = producto.find_element(By.CSS_SELECTOR, ".product-card__name").text.strip()
-                    link = producto.find_element(By.CSS_SELECTOR, ".product-card__name").get_attribute("href")
+                    img_url = producto.find_element(By.CSS_SELECTOR, "img.image__tag").get_attribute("src")
+                except:
+                    img_url = ""
 
-                    
-                    contenedor_precio = producto.find_element(By.CSS_SELECTOR, "div.product-card__price")    
-                    
-                    # Buscar todos los precios en formato $xx.xxx
-                    precios_encontrados = re.findall(r"\$\d{1,3}(?:\.\d{3})*", contenedor_precio.text)
-                    precio_actual = precios_encontrados[0] if len(precios_encontrados) > 0 else ""
-                    precio_normal = precios_encontrados[1] if len(precios_encontrados) > 1 else ""
+                try:
+                    precio_texto = producto.find_element(By.CSS_SELECTOR, "div.product-card__prices p").text
+                    precio = re.search(r"\$\d{1,3}(?:\.\d{3})*", precio_texto)
+                    precio_actual = precio.group() if precio else ""
+                    precio_normal = ""  # No se muestra explícitamente otro precio
+                except:
+                    precio_actual = ""
+                    precio_normal = ""
 
+                try:
+                    data_json = producto.find_element(By.CSS_SELECTOR, "button[name='btnAddCart']").get_attribute("data-json")
+                    json_data = json.loads(data_json)
+                    sku = json_data.get("ProductPartNumber", "")
+                except:
+                    sku = ""
 
-                    try:
-                        img = producto.find_element(By.CSS_SELECTOR, ".product-card__image img")
-                        srcset = img.get_attribute("srcset")
-                        img_url = srcset.split(",")[-1].split()[0] if srcset else img.get_attribute("src")
-                    except:
-                        img_url = ""
+                datos_completos.append({
+                    'Nombre Producto': nombre,
+                    'SKU': sku,
+                    'Precio': precio_actual,
+                    'Precio Normal': precio_normal,
+                    'Marca Buscada': marca_text,
+                    'Modelo Buscado': modelo_text,
+                    'Texto Búsqueda': texto_busqueda,
+                    'Link': link,
+                    'Imagen': img_url,
+                })
 
-                    try:
-                        script = producto.find_element(By.CSS_SELECTOR, "script[type='application/json']").get_attribute("innerHTML")
-                        json_data = json.loads(script)
-                        sku = json_data["variants"][0].get("sku", "")
-                    except:
-                        sku = ""
-
-                    datos_completos.append({
-                        'Nombre Producto': nombre,
-                        'SKU': sku,
-                        'Precio': precio_actual,
-                        'Precio Normal': precio_normal,
-                        'Marca Buscada': marca_text,
-                        'Modelo Buscado': modelo_text,
-                        'Texto Búsqueda': texto_busqueda,
-                        'Link': link,
-                        'Imagen': img_url,
-                    })
-
-                except Exception as e:
-                    print(f"Error extrayendo producto: {e}")
-                    continue
 
         except Exception as e:
             print(f"Error inesperado en búsqueda '{texto_busqueda}': {e}")
@@ -121,11 +116,11 @@ for repuesto in repuestos:
 
 
 
+
 # Guardar datos en Excel
-df_final = pd.DataFrame(datos_completos).drop_duplicates(subset=["Nombre Producto", "SKU"])
-df_final = pd.DataFrame(df_final).drop_duplicates(subset=["Nombre Producto", "Link"])
+df_final = pd.DataFrame(datos_completos).drop_duplicates(subset=["Nombre Producto", "Link"])
 os.makedirs('Data encontrada', exist_ok=True)
-output_path = 'Data encontrada/resultados_emgi.xlsx'
+output_path = 'Data encontrada/resultados_inalco.xlsx'
 df_final['fecha_carga'] = fecha_hora_actual
 df_final.to_excel(output_path, index=False)
 print(f"Datos guardados en '{output_path}'")
@@ -134,7 +129,7 @@ print(f"Datos guardados en '{output_path}'")
 fin = time.time()
 duracion = fin - inicio
 duracion_legible = str(timedelta(seconds=int(duracion)))
-with open('Data encontrada/tiempo_ejecucion_emgi.txt', 'w') as f:
+with open('Data encontrada/tiempo_ejecucion_inalco.txt', 'w') as f:
     f.write(f"Tiempo total de ejecucion: {duracion_legible}\n")
     f.write(f"Duracion en segundos: {duracion:.2f} segundos\n")
 

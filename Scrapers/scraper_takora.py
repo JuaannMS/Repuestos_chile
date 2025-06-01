@@ -11,26 +11,17 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from datetime import datetime, timedelta
 import re
+from selenium.webdriver.chrome.options import Options
+
+options = Options()
+options.add_argument("--headless")  # Ejecutar sin interfaz gráfica
+options.add_argument("--disable-gpu")
+options.add_argument("--no-sandbox")
 
 fecha_hora_actual = datetime.now()
 
 # Guardar inicio de ejecución
 inicio = time.time()
-
-
-def extraer_precios(texto):
-    # Buscar precios con regex
-    precios_encontrados = re.findall(r'\$?\s?[\d.,]+', str(texto))
-    precios_limpios = [re.sub(r'[^\d]', '', p) for p in precios_encontrados]
-
-    if len(precios_limpios) >= 2:
-        return pd.Series([precios_limpios[0], precios_limpios[1]])
-    elif len(precios_limpios) == 1:
-        return pd.Series([precios_limpios[0], precios_limpios[0]])
-    else:
-        return pd.Series([None, None])
-
-
 
 # Funciones para cargar inputs
 def cargar_repuestos():
@@ -154,11 +145,31 @@ df_final = pd.DataFrame(datos_completos).drop_duplicates()
 os.makedirs('Data encontrada', exist_ok=True)
 output_path = 'Data encontrada/resultados_takora.xlsx'
 
-# df_final = pd.read_excel('C:/Users/jmmsa/OneDrive/Escritorio/Scraper Repuestos/Data encontrada/resultados_takora.xlsx')
-# df_final.rename(columns={'Precio': 'Precio Normal', 'Precio Normal': 'Precio'}, inplace=True)
+# df_final = pd.read_excel(r'C:\Users\jmmsa\OneDrive\Escritorio\Scraper Repuestos\Data encontrada\resultados_takora.xlsx')
 
-# # Aplicar la función a df_final['Precio']
-# df_final[['Precio Normal', 'Precio']] = df_final['Precio'].apply(extraer_precios)
+#LIMPIEZA DEL PRECIO
+df_split = df_final['Precio'].str.split(' ', n=1, expand=True)
+
+df_final['Precio Normal'] = df_split[0]
+df_final['Precio'] = df_split[1]
+
+# 3) Para las filas que solo tenían un valor original,
+#    mueve ese valor a "Precio" y deja "Precio Normal" en NaN
+mask_unico = df_final['Precio'].isna()
+df_final.loc[mask_unico, 'Precio'] = df_final.loc[mask_unico, 'Precio Normal']
+df_final.loc[mask_unico, 'Precio Normal'] = pd.NA
+
+# 4) (Opcional) Quita símbolos "$", puntos o comas y convierte a numérico
+for col in ['Precio Normal', 'Precio']:
+    df_final[col] = (
+        df_final[col]
+        .astype(str)
+        .str.replace(r'[\$\.\,]', '', regex=True)  # quita "$", puntos y comas
+        .replace('None', pd.NA)                    # convierte la cadena "None" a NaN
+    )
+    df_final[col] = pd.to_numeric(df_final[col], errors='coerce')
+
+
 
 df_final['fecha_carga'] = fecha_hora_actual
 df_final.to_excel(output_path, index=False)

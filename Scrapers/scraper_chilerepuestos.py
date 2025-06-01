@@ -12,6 +12,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 import time
 from datetime import datetime, timedelta
+from selenium.webdriver.chrome.options import Options
+
+options = Options()
+options.add_argument("--headless")  # Ejecutar sin interfaz gráfica
+options.add_argument("--disable-gpu")
+options.add_argument("--no-sandbox")
 
 fecha_hora_actual = datetime.now()
 
@@ -77,9 +83,6 @@ for repuesto in repuestos:
 
             driver.get(search_url)
 
-            time.sleep(3)
-
-
             try:
                 productos_element = WebDriverWait(driver, 5).until(
                     EC.presence_of_all_elements_located(
@@ -143,7 +146,6 @@ print("Datos guardados en 'Data encontrada/resultados_chilerepuestos.xlsx'")
 fin = time.time()
 duracion = fin - inicio
 duracion_legible = str(timedelta(seconds=int(duracion)))
-
 with open('Data encontrada/tiempo_ejecucion_chilerepuestos.txt', 'w') as f:
     f.write(f"Tiempo total de ejecucion: {duracion_legible}\n")
     f.write(f"Duracion en segundos: {duracion:.2f} segundos\n")

@@ -11,6 +11,12 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from datetime import datetime, timedelta
+from selenium.webdriver.chrome.options import Options
+
+options = Options()
+options.add_argument("--headless")  # Ejecutar sin interfaz gráfica
+options.add_argument("--disable-gpu")
+options.add_argument("--no-sandbox")
 
 # Guardar inicio de ejecución
 inicio = time.time()
@@ -61,7 +67,7 @@ for repuesto in repuestos:
         texto_busqueda = f"{repuesto} {marca} {modelo}"
 
         try:
-            wait = WebDriverWait(driver, 5)
+            wait = WebDriverWait(driver, 3)
 
             # Buscar input de búsqueda
             input_element = wait.until(EC.visibility_of_element_located((

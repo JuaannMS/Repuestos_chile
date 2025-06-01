@@ -6,11 +6,12 @@ from webdriver_manager.chrome import ChromeDriverManager
 import pandas as pd
 import time
 import os
-import datetime
+from datetime import datetime, timedelta
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from datetime import datetime, timedelta
+from selenium.webdriver.chrome.options import Options
+import urllib.parse  # <-- IMPORT NECESARIO PARA CODIFICAR LA URL
 
 fecha_hora_actual = datetime.now()
 
@@ -36,10 +37,9 @@ options = webdriver.ChromeOptions()
 options.add_argument('--start-maximized')
 driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
 
-
-url = 'https://www.salfarepuestos.cl/'
-driver.get(url)
-time.sleep(3)
+# Ya no vamos a la página principal, sino que armamos la URL directamente en el bucle
+# driver.get('https://www.salfarepuestos.cl/')
+# time.sleep(3)
 
 # Cargar inputs
 repuestos = cargar_repuestos()
@@ -54,50 +54,76 @@ for repuesto in repuestos:
         print(f"Buscando: {texto_busqueda}")
 
         try:
+            # 1) Codificamos el texto para la parte de la ruta
+            ruta_codificada = urllib.parse.quote(texto_busqueda, safe='')
+            # 2) Codificamos el texto para el parámetro _q (se usa quote_plus para espacios “+”)
+            query_codificada = urllib.parse.quote_plus(texto_busqueda)
+
+            # Construimos la URL completa (observa la sintaxis: /ruta_codificada?_q=query_codificada&map=ft)
+            url_buscada = (
+                f"https://www.salfarepuestos.cl/{ruta_codificada}"
+                f"?_q={query_codificada}&map=ft"
+            )
+
+            # 3) Navegamos a esa URL directamente
+            driver.get(url_buscada)
+
+            # 4) Esperamos a que aparezcan los productos (ajusta el selector si fuera necesario)
             wait = WebDriverWait(driver, 10)
+            # Aquí esperamos, por ejemplo, a que exista al menos un div con la clase de producto
+            wait.until(EC.presence_of_element_located(
+                (By.CSS_SELECTOR, "div.vtex-search-result-3-x-galleryItem")
+            ))
 
-            # Buscar input de búsqueda
-            input_element = wait.until(EC.visibility_of_element_located((By.XPATH,
-                "//input[@placeholder='Ingresa lo que deseas encontrar']")))
-            input_element.click()
-            input_element.send_keys(Keys.CONTROL, 'a')
-            input_element.send_keys(Keys.DELETE)
-            input_element.send_keys(texto_busqueda)
-            input_element.send_keys(Keys.RETURN)
-
-            time.sleep(1.5)
-
+            # 5) Una vez cargados, extraemos todos los productos
             productos = driver.find_elements(By.CSS_SELECTOR, "div.vtex-search-result-3-x-galleryItem")
             if not productos:
                 print(f"No se encontraron productos para: {texto_busqueda}")
                 continue
 
             for producto in productos:
-                
                 # Nombre del producto
-                nombre = producto.find_element(By.CSS_SELECTOR, ".vtex-product-summary-2-x-brandName").text.strip()
+                nombre = producto.find_element(
+                    By.CSS_SELECTOR,
+                    ".vtex-product-summary-2-x-brandName"
+                ).text.strip()
 
                 # SKU
-                sku = producto.find_element(By.CSS_SELECTOR, ".vtex-product-identifier-0-x-product-identifier__value").text.strip()
+                sku = producto.find_element(
+                    By.CSS_SELECTOR,
+                    ".vtex-product-identifier-0-x-product-identifier__value"
+                ).text.strip()
 
                 # Precio listado (tachado) — puede no existir
                 try:
-                    precio_lista = producto.find_element(By.CSS_SELECTOR, ".vtex-product-price-1-x-listPriceValue").text.strip()
+                    precio_lista = producto.find_element(
+                        By.CSS_SELECTOR,
+                        ".vtex-product-price-1-x-listPriceValue"
+                    ).text.strip()
                 except NoSuchElementException:
                     precio_lista = ""
 
                 # Precio actual
                 try:
-                    precio_actual = producto.find_element(By.CSS_SELECTOR, ".vtex-product-price-1-x-sellingPriceValue").text.strip()
+                    precio_actual = producto.find_element(
+                        By.CSS_SELECTOR,
+                        ".vtex-product-price-1-x-sellingPriceValue"
+                    ).text.strip()
                 except NoSuchElementException:
                     precio_actual = ""
 
                 # Link
-                link = producto.find_element(By.CSS_SELECTOR, "a.vtex-product-summary-2-x-clearLink").get_attribute("href")
+                link = producto.find_element(
+                    By.CSS_SELECTOR,
+                    "a.vtex-product-summary-2-x-clearLink"
+                ).get_attribute("href")
 
                 # Imagen
                 try:
-                    img_url = producto.find_element(By.CSS_SELECTOR, "img.vtex-product-summary-2-x-image").get_attribute("src")
+                    img_url = producto.find_element(
+                        By.CSS_SELECTOR,
+                        "img.vtex-product-summary-2-x-image"
+                    ).get_attribute("src")
                 except NoSuchElementException:
                     img_url = ""
 
@@ -116,7 +142,6 @@ for repuesto in repuestos:
         except Exception as e:
             print(f"Error inesperado en búsqueda '{texto_busqueda}': {e}")
             continue
-
 
 # Guardar datos en Excel
 df_final = pd.DataFrame(datos_completos).drop_duplicates()

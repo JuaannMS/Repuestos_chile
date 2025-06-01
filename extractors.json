@@ -6,8 +6,15 @@
     "type": "css",
     "selectors": {
       "marca":     ".product-details-list ul li:nth-child(3) span",
-      "modelo":    ".product-details-list ul li:nth-child(7) span",
-      "categoría": ".product-details-list ul li:nth-child(4) span"
+      "categoria": ".product-details-list ul li:nth-child(4) span",
+      "modelo":    ".product-details-list ul li:nth-child(7) span"
+    }
+  },
+  "mundorepuestos.com": {
+    "type": "css",
+    "selectors": {
+      "marca":  "div.datos_productos > span.cod_producto2:nth-of-type(2)",
+      "modelo": "div.datos_productos .detalle_modelo a"
     }
   },
   "otro-dominio.cl": {
@@ -16,7 +23,7 @@
       "marca":     ".brand-name",
       "modelo":    ".model-info",
       "num_parte": "#sku-part",
-      "categoría": ".breadcrumb li:last-child"
+      "categoria": ".breadcrumb li:last-child"
     }
   }
 }

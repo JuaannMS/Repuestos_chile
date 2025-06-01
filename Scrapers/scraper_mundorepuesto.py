@@ -10,6 +10,12 @@ from datetime import datetime, timedelta
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.webdriver.chrome.options import Options
+
+options = Options()
+options.add_argument("--headless")  # Ejecutar sin interfaz gráfica
+options.add_argument("--disable-gpu")
+options.add_argument("--no-sandbox")
 
 # Fecha y hora de carga
 fecha_hora_actual = datetime.now()
@@ -24,13 +30,12 @@ def cargar_repuestos():
 
 def cargar_modelos_marcas():
     path = 'Modelos y marcas'
-    archivos = [f for f in os.listdir(path) if f.endswith('.csv')]
-    #archivos = archivos[:2]  # solo los dos primeros
-    records = []
-    for archivo in archivos:
-        df = pd.read_csv(os.path.join(path, archivo))
-        records.extend(df.to_dict('records'))
-    return records
+    modelos_marcas = []
+    for archivo in os.listdir(path):
+        if archivo.endswith('.csv'):
+            df = pd.read_csv(os.path.join(path, archivo))
+            modelos_marcas.extend(df.to_dict('records'))
+    return modelos_marcas
 
 # Configurar WebDriver
 options = webdriver.ChromeOptions()
@@ -64,7 +69,7 @@ for repuesto in repuestos:
 
         texto_busqueda = f"{repuesto} {marca} {modelo}"
         try:
-            wait_short = WebDriverWait(driver, 5)
+            wait_short = WebDriverWait(driver, 3)
 
             # Buscar y escribir en el input
             inp = wait_short.until(EC.visibility_of_element_located((By.ID, 'txtBuscar')))
@@ -139,7 +144,7 @@ for repuesto in repuestos:
                         'Años Aplicación':  anos_aplic,
                         'Marca Producto':   marca_prod,
                         'Origen':           origen,
-                        'Precio Oferta':    precio_oferta,
+                        'Precio':    precio_oferta,
                         'Precio Original':  precio_original,
                         'Busqueda':         texto_busqueda,
                         'Marca Buscada':    marca,
