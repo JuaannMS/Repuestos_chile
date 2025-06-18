@@ -26,10 +26,11 @@ def extraer_por_css(soup: BeautifulSoup, selectors: dict) -> dict:
 
 
 INPUT_CSV   = "Data consolidada/df_nombres_duplicados.xlsx"
-OUTPUT_FILE = "Data consolidada/df_nombres_duplicados_modificados.xlsx"
+OUTPUT_FILE = "Data consolidada/df_nombres_duplicados_modificados_ciper.xlsx"
 URL_COLUMN  = "Link"
 
 df = pd.read_excel(INPUT_CSV)
+df = df[df["Pagina"].isin(["CHILEREPUESTOS" ])] #, "MUNDOREPUESTOS" "CHILEREPUESTOS", 
 nombres = []
 total = len(df)
 
@@ -96,7 +97,6 @@ for idx, row in df.iterrows():
             print(f"⚠️  [Timeout/Error] fila {idx+1}: no se pudo procesar chilerepuestos.com → {url}")
             # name ya está asignado a nombre_base, se continúa
 
-    # ——— 3.3. Para otros dominios ——————————————————————————————
     else:
         # Si es tipo slug:
         if rule.get("type") == "slug":

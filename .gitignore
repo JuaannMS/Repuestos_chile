@@ -2,6 +2,10 @@
 Data encontrada/
 Input Repuestos/
 Data consolidada/
+.env
+# carga_bdd.ipynb
+# creacion_insert_principales.sql
 
 # Ignorar cualquier archivo .csv del proyecto
 *.csv
+*.ipynb
