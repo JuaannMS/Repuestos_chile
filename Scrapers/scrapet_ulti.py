@@ -107,9 +107,15 @@ for repuesto in repuestos:
                         # Características y compatibilidad
                         lis = producto.find_elements(By.CSS_SELECTOR, ".product-card__features li")
                         textos = [li.text.strip() for li in lis]
+                        # ... tu código de extracción ...
                         caracteristicas = textos[:-1]
                         compatibilidad = textos[-1] if textos else ""
-                        
+
+                        # separar en dos partes por el primer espacio
+                        parts = compatibilidad.split(' ', 1)
+                        marca_compat = parts[0]
+                        modelo_compat = parts[1] if len(parts) > 1 else ''
+
                         datos_completos.append({
                             'Marca Buscada': marca_badge,
                             'Origen': origen_badge,
@@ -117,7 +123,8 @@ for repuesto in repuestos:
                             'Nombre Producto': nombre,
                             'Precio': precio,
                             'Características': "; ".join(caracteristicas),
-                            'Compatibilidad': compatibilidad,
+                            'Marca Buscada': marca_compat,
+                            'Modelo Buscado': modelo_compat,
                             'Link': link,
                             'Imagen': img_url
                         })

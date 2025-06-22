@@ -12,10 +12,17 @@ CREATE TABLE Modelo (
     FOREIGN KEY (id_marca) REFERENCES Marca(id_marca)
 );
 
--- Tabla: Tipo de repuesto
-CREATE TABLE Tipo_repuesto (
-    id_tipo SERIAL PRIMARY KEY,
-    nombre VARCHAR(100) NOT NULL
+-- Tabla de categorías (id_categoria numérico)
+CREATE TABLE categoria (
+  id_categoria SERIAL PRIMARY KEY,
+  categoria    VARCHAR(100) NOT NULL
+);
+
+-- Tabla de tipos de repuesto, con FK que apunta a una columna INTEGER
+CREATE TABLE tipo_repuesto (
+  id_tipo      SERIAL PRIMARY KEY,
+  nombre       VARCHAR(100) NOT NULL,
+  id_categoria INT REFERENCES categoria(id_categoria)
 );
 
 -- Tabla: Tienda
@@ -51,6 +58,8 @@ CREATE TABLE Usuario (
     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+
+
 -- Tabla: Favoritos
 CREATE TABLE Favoritos (
     id_favorito SERIAL PRIMARY KEY,
@@ -62,7 +71,7 @@ CREATE TABLE Favoritos (
 
 -- Tabla: Compatibilidad
 CREATE TABLE Compatibilidad (
-    id_repuesto VARCHAR(10) NOT NULL,
+    id_repuesto VARCHAR(20) NOT NULL,
     id_modelo INT NOT NULL,
     PRIMARY KEY (id_repuesto, id_modelo),
     FOREIGN KEY (id_repuesto) REFERENCES Repuestos(id_repuesto),
@@ -71,11 +80,11 @@ CREATE TABLE Compatibilidad (
 
 -- Tabla: Catalogo
 CREATE TABLE Catalogo (
-    id_repuesto VARCHAR(10) NOT NULL,
-    id_modelo INT NOT NULL,
-    PRIMARY KEY (id_repuesto, id_modelo),
+    id_repuesto VARCHAR(20) NOT NULL,
+    id_tienda INT NOT NULL,
+    PRIMARY KEY (id_repuesto, id_tienda),
     FOREIGN KEY (id_repuesto) REFERENCES Repuestos(id_repuesto),
-    FOREIGN KEY (id_modelo) REFERENCES Modelo(id_modelo)
+    FOREIGN KEY (id_tienda) REFERENCES Tienda(id_tienda)
 );
 
 
@@ -185,43 +194,87 @@ INSERT INTO Tienda (id_tienda, nombre) VALUES (8, 'Salfa Repuestos');
 INSERT INTO Tienda (id_tienda, nombre) VALUES (9, 'Takora');
 INSERT INTO Tienda (id_tienda, nombre) VALUES (10, 'Ulti');
 
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (1, 'Filtro de aceite');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (2, 'Kit rodamiento');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (3, 'Neumático');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (4, 'Filtros de aire');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (5, 'Bujías');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (6, 'Bomba');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (7, 'Radiador');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (8, 'Correas');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (9, 'Termostato');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (10, 'Pastillas de freno');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (11, 'Discos de freno');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (12, 'Tambor');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (13, 'Sensor');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (14, 'Amortiguador');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (15, 'Espiral');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (16, 'Rótula');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (17, 'Bieleta');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (18, 'Brazo de suspensión');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (19, 'Terminal de dirección');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (20, 'Embragues');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (21, 'Caja de cambio');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (22, 'Kit de embrague');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (23, 'Homocinética');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (24, 'Alternador');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (25, 'Batería');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (26, 'Luces');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (27, 'Tubo de escape');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (28, 'Ventilador');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (29, 'Manguera');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (30, 'Compresor');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (31, 'Combustible');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (32, 'Filtro cabina');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (33, 'Foco');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (34, 'Espejo retrovisor');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (35, 'Manilla de puerta');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (36, 'Plumilla');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (37, 'Tapabarros');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (38, 'Parachoque');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (39, 'Motor');
-INSERT INTO tipo_repuesto (id_tipo, nombre) VALUES (40, 'Luz');
+
+
+INSERT INTO categoria (id_categoria, categoria) VALUES
+  (1, 'Motor'),
+  (2, 'Frenos'),
+  (3, 'Suspensión y dirección'),
+  (4, 'Transmisión'),
+  (5, 'Sistema eléctrico'),
+  (6, 'Sistema de escape'),
+  (7, 'Enfriamiento'),
+  (8, 'Filtros'),
+  (9, 'Carrocería'),
+  (10, 'Accesorios');
+
+-- 2) Insertar todos los tipos de repuesto con su id_categoria
+INSERT INTO tipo_repuesto (id_tipo, nombre, id_categoria) VALUES
+  (1,  'Distribucion',             1),
+  (2,  'Kit Rodamiento',           3),
+  (3,  'Eje',                      3),
+  (4,  'Rodamiento',               3),
+  (5,  'Filtro aire',              8),
+  (6,  'Bujia',                    1),
+  (7,  'Bomba',                    7),
+  (8,  'Radiador',                 7),
+  (9,  'Correa',                   1),
+  (10, 'Enfriador',                7),
+  (11, 'Termostato',               1),
+  (12, 'Pastilla freno',           2),
+  (13, 'Disco freno',              2),
+  (14, 'Tambor',                   2),
+  (15, 'Sensor',                   5),
+  (16, 'Amortiguador',             3),
+  (17, 'Espiral',                  3),
+  (18, 'Rotula',                   3),
+  (19, 'Bieleta',                  3),
+  (20, 'Brazo suspension',         3),
+  (21, 'Terminal de direccion',    3),
+  (22, 'Embrague',                 4),
+  (23, 'Caja cambio',              4),
+  (24, 'Kit embrague',             4),
+  (25, 'Homocinetica',             4),
+  (26, 'Alternador',               5),
+  (27, 'Bateria',                  5),
+  (28, 'Luces',                    5),
+  (29, 'Tubo escape',              6),
+  (30, 'Ventilador',               7),
+  (31, 'Manguera',                 7),
+  (32, 'Filtro aceite',            8),
+  (33, 'Compresor',                1),
+  (34, 'Combustible',              8),
+  (35, 'Filtro cabina',            8),
+  (36, 'Foco',                     9),
+  (37, 'Espejo retrovisor',        9),
+  (38, 'Manilla',                  9),
+  (39, 'Farol',                    9),
+  (40, 'Plumilla',                 10),
+  (41, 'Neblinero',                9),
+  (42, 'Optico',                   9),
+  (43, 'Soporte',                  9),
+  (44, 'Tapabarro',                9),
+  (45, 'Parachoque',               9),
+  (46, 'Motor',                    1),
+  (47, 'Luz',                      5),
+  (48, 'Filtro',                   8),
+  (49, 'Freno',                    2),
+  (50, 'Inyector',                 1),
+  (51, 'Caneria',                  7),
+  (52, 'Bandeja',                  3),
+  (53, 'Maza',                     3),
+  (54, 'Cremallera',               3),
+  (55, 'Flujometro',               5),
+  (56, 'Switch',                   5),
+  (57, 'Tapa',                     9),
+  (58, 'Volante',                  3),
+  (59, 'Empaquetadura',            1),
+  (60, 'Valvula',                  1),
+  (61, 'Cubre tablero',            9),
+  (62, 'Brazo auxiliar',           3),
+  (63, 'Bobina',                   1),
+  (64, 'Espejo',                   9),
+  (65, 'Reten',                    1),
+  (66, 'Turbo',                    1),
+  (67, 'Balancin',                 1),
+  (68, 'Anillo',                   1);
