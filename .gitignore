@@ -8,4 +8,5 @@ Data consolidada/
 
 # Ignorar cualquier archivo .csv del proyecto
 *.csv
+*.xlsx
 *.ipynb

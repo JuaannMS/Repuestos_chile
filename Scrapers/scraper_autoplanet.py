@@ -123,21 +123,21 @@ for repuesto in repuestos:
             print(f"Error inesperado en búsqueda {texto_busqueda}: {e}")
             continue
 
-# Guardar datos en Excel
-df_final = pd.DataFrame(datos_completos).drop_duplicates()
-os.makedirs('Data encontrada', exist_ok=True)
-df_final['fecha_carga'] = fecha_hora_actual
-df_final.to_excel('Data encontrada/resultados_autoplanet.xlsx', index=False)
-print("Datos guardados en 'Data encontrada/resultados_autoplanet_corregido.xlsx'")
+# # Guardar datos en Excel
+# df_final = pd.DataFrame(datos_completos).drop_duplicates()
+# os.makedirs('Data encontrada', exist_ok=True)
+# df_final['fecha_carga'] = fecha_hora_actual
+# df_final.to_excel('Data encontrada/resultados_autoplanet.xlsx', index=False)
+# print("Datos guardados en 'Data encontrada/resultados_autoplanet_corregido.xlsx'")
 
-# Guardar tiempo de ejecución
-fin = time.time()
-duracion = fin - inicio
-duracion_legible = str(timedelta(seconds=int(duracion)))
+# # Guardar tiempo de ejecución
+# fin = time.time()
+# duracion = fin - inicio
+# duracion_legible = str(timedelta(seconds=int(duracion)))
 
-with open('Data encontrada/tiempo_ejecucion_autoplanet.txt', 'w') as f:
-    f.write(f"Tiempo total de ejecución: {duracion_legible}\n")
-    f.write(f"Duración en segundos: {duracion:.2f} segundos\n")
+# with open('Data encontrada/tiempo_ejecucion_autoplanet.txt', 'w') as f:
+#     f.write(f"Tiempo total de ejecución: {duracion_legible}\n")
+#     f.write(f"Duración en segundos: {duracion:.2f} segundos\n")
 
-# Cerrar navegador
-driver.quit()
+# # Cerrar navegador
+# driver.quit()
