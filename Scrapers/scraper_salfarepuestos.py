@@ -143,21 +143,21 @@ for repuesto in repuestos:
             print(f"Error inesperado en búsqueda '{texto_busqueda}': {e}")
             continue
 
-# Guardar datos en Excel
-df_final = pd.DataFrame(datos_completos).drop_duplicates()
-os.makedirs('Data encontrada', exist_ok=True)
-output_path = 'Data encontrada/resultados_salfarepuestos.xlsx'
-df_final['fecha_carga'] = fecha_hora_actual
-df_final.to_excel(output_path, index=False)
-print(f"Datos guardados en '{output_path}'")
+# # Guardar datos en Excel
+# df_final = pd.DataFrame(datos_completos).drop_duplicates()
+# os.makedirs('Data encontrada', exist_ok=True)
+# output_path = 'Data encontrada/resultados_salfarepuestos.xlsx'
+# df_final['fecha_carga'] = fecha_hora_actual
+# df_final.to_excel(output_path, index=False)
+# print(f"Datos guardados en '{output_path}'")
 
-# Guardar tiempo de ejecución
-fin = time.time()
-duracion = fin - inicio
-duracion_legible = str(timedelta(seconds=int(duracion)))
-with open('Data encontrada/tiempo_ejecucion_salfarepuestos.txt', 'w') as f:
-    f.write(f"Tiempo total de ejecucion: {duracion_legible}\n")
-    f.write(f"Duracion en segundos: {duracion:.2f} segundos\n")
+# # Guardar tiempo de ejecución
+# fin = time.time()
+# duracion = fin - inicio
+# duracion_legible = str(timedelta(seconds=int(duracion)))
+# with open('Data encontrada/tiempo_ejecucion_salfarepuestos.txt', 'w') as f:
+#     f.write(f"Tiempo total de ejecucion: {duracion_legible}\n")
+#     f.write(f"Duracion en segundos: {duracion:.2f} segundos\n")
 
-# Cerrar navegador
-driver.quit()
+# # Cerrar navegador
+# driver.quit()

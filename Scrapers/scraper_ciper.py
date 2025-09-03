@@ -133,7 +133,7 @@ for repuesto in repuestos:
             continue
 
 # Guardar datos en CSV
-df_resultados = pd.DataFrame(datos_completos).drop_duplicates()
+df_resultados = pd.DataFrame(datos_completos).drop_duplicates(subset=[ 'Link'])
 os.makedirs('Data encontrada', exist_ok=True)
 df_resultados['fecha_carga'] = fecha_hora_actual
 df_resultados.to_excel('Data encontrada/resultados_ciper.xlsx', index=False)

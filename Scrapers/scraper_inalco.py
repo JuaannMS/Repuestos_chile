@@ -1,3 +1,6 @@
+import spyder_kernels
+print(spyder_kernels.__version__)
+
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -16,7 +19,7 @@ import re
 from selenium.webdriver.chrome.options import Options
 
 options = Options()
-options.add_argument("--headless")  # Ejecutar sin interfaz gráfica
+# options.add_argument("--headless")  # Ejecutar sin interfaz gráfica
 options.add_argument("--disable-gpu")
 options.add_argument("--no-sandbox")
 
@@ -44,6 +47,8 @@ options = webdriver.ChromeOptions()
 options.add_argument('--start-maximized')
 driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
 
+search_url = f"https://www.inalcotiendaonline.cl"
+driver.get(search_url)
 
 # Cargar inputs
 repuestos = cargar_repuestos()
@@ -120,7 +125,7 @@ for repuesto in repuestos:
 # Guardar datos en Excel
 df_final = pd.DataFrame(datos_completos).drop_duplicates(subset=["Nombre Producto", "Link"])
 os.makedirs('Data encontrada', exist_ok=True)
-output_path = 'Data encontrada/resultados_inalco.xlsx'
+output_path = 'Data encontrada/resultados_inalco2.xlsx'
 df_final['fecha_carga'] = fecha_hora_actual
 df_final.to_excel(output_path, index=False)
 print(f"Datos guardados en '{output_path}'")

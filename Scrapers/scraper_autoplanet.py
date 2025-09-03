@@ -124,10 +124,10 @@ for repuesto in repuestos:
             continue
 
 # # Guardar datos en Excel
-# df_final = pd.DataFrame(datos_completos).drop_duplicates()
+# df_final = pd.DataFrame(datos_completos).drop_duplicates(subset=[ 'Link'])
 # os.makedirs('Data encontrada', exist_ok=True)
 # df_final['fecha_carga'] = fecha_hora_actual
-# df_final.to_excel('Data encontrada/resultados_autoplanet.xlsx', index=False)
+# df_final.to_excel('Data encontrada/resultados_autoplanet1.xlsx', index=False)
 # print("Datos guardados en 'Data encontrada/resultados_autoplanet_corregido.xlsx'")
 
 # # Guardar tiempo de ejecución

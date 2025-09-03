@@ -146,9 +146,6 @@ for repuesto in repuestos:
                         'Origen':           origen,
                         'Precio':    precio_oferta,
                         'Precio Original':  precio_original,
-                        'Busqueda':         texto_busqueda,
-                        'Marca Buscada':    marca,
-                        'Modelo Buscado':   modelo,
                         'Link':             href,
                         'Imagen':           img_url
                     })
