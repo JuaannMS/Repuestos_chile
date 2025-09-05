@@ -1,6 +1,3 @@
-import spyder_kernels
-print(spyder_kernels.__version__)
-
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -123,7 +120,7 @@ for repuesto in repuestos:
 
 
 # Guardar datos en Excel
-df_final = pd.DataFrame(datos_completos).drop_duplicates(subset=["Nombre Producto", "Link"])
+df_final = pd.DataFrame(datos_completos).drop_duplicates(subset=["Link"])
 os.makedirs('Data encontrada', exist_ok=True)
 output_path = 'Data encontrada/resultados_inalco2.xlsx'
 df_final['fecha_carga'] = fecha_hora_actual
